@@ -2571,8 +2571,8 @@
     <div class="card">
       <h2>☁️ 云端同步（手机 / 电脑共享） ${syncBadge}</h2>
       <div class="note" style="line-height:1.8">
-        开启后数据自动存到云端，<strong>手机和电脑打开同一个部署网址</strong>即可同步编辑。两端需填写<strong>相同的 Token + 同步密码 + 仓库 ID</strong>。<br>
-        建议填「同步密码」：数据在本地用 AES 加密后再上传，云端只存密文、看不到内容。
+        开启后数据自动存到云端，<strong>手机和电脑打开同一个部署网址</strong>即可同步编辑。两端需填写<strong>相同的 Token + 仓库 ID</strong>（若设了密码，两端密码也要一致）。<br>
+        <strong>⚠️「同步密码」建议留空。</strong>gist 是私有的，只有拿着 Token 的人能读，不加密一样安全；而一旦设了密码又忘记，云端数据就再也打不开（2026-09 已因此出过一次事故）。真要加密，请务必把密码抄到备忘录里。
       </div>
       <label style="margin-top:10px">存储后端</label>
       <select id="syncProvider">
@@ -2580,9 +2580,9 @@
         <option value="jsonbin" ${sc.provider === 'jsonbin' ? 'selected' : ''}>JSONBin.io（免费额度小，仅备选）</option>
       </select>
       <label style="margin-top:10px">GitHub Token（Personal Access Token，需勾 gist 权限）</label>
-      <input type="password" id="syncApiKey" value="${esc(sc.apiKey)}" placeholder="ghp_...（GitHub → Settings → Developer settings → Tokens）">
-      <label style="margin-top:10px">同步密码（可选，强烈建议填写）</label>
-      <input type="password" id="syncPass" value="${esc(sc.passphrase)}" placeholder="两端填相同密码，云端存密文">
+      <input type="password" id="syncApiKey" value="${esc(sc.apiKey)}" placeholder="ghp_...（完整 40 位；GitHub → Settings → Developer settings → Tokens）">
+      <label style="margin-top:10px">同步密码（可选 · 建议留空）</label>
+      <input type="password" id="syncPass" value="${esc(sc.passphrase)}" placeholder="建议留空；若填写，请务必抄下来存好——忘记=数据打不开">
       <label style="margin-top:10px">仓库 ID（可选 · 留空=新建；另一台设备填此 ID 可共用同一份数据）</label>
       <input type="text" id="syncBinId" value="${esc(sc.binId)}" placeholder="留空则新建云端仓库；填另一台设备的仓库 ID 即共用">
       <div class="row" style="margin-top:12px;gap:8px;flex-wrap:wrap">
@@ -2601,7 +2601,7 @@
           : '尚未创建云端仓库——保存设置后，编辑任意内容会自动创建并上传。'}
       </div>
       <div id="syncStatus" class="sub" style="margin-top:8px;color:var(--muted)">${ui.syncStatusText || '同步未开始'}</div>
-      <div class="sub" style="margin-top:8px;color:var(--muted)">📌 GitHub 免费拿 Token：GitHub → 头像 → Settings → Developer settings → Personal access tokens → Generate new token → 勾选 gist 权限 → 复制生成的 ghp_...。</div>
+      <div class="sub" style="margin-top:8px;color:var(--muted)">📌 GitHub 免费拿 Token：GitHub → 头像 → Settings → Developer settings → Personal access tokens → Generate new token → 勾选 <strong>gist</strong>（想让它能建仓库再加 <strong>repo</strong>）→ 复制生成的 ghp_...。<br>⚠️ 完整长度是 <strong>40 位</strong>（ghp_ 后面跟 36 个字符）。如果只有二十来位，就是没复制全。</div>
     </div>
 
     <div class="card">
