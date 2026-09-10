@@ -2526,7 +2526,12 @@
         <button class="btn" data-action="import">⬆ 从备份恢复</button>
         <button class="btn danger" data-action="reset">🗑 清空全部数据</button>
       </div>
-      <div class="note" style="margin-top:12px">数据仅保存在<strong>当前浏览器</strong>。换设备或浏览器需先「导出备份」再「恢复」。建议每周导出一次。</div>
+      <div class="note" style="margin-top:12px;line-height:1.8">
+        <strong>两份保障，互不替代：</strong><br>
+        ⛅ <strong>云端同步</strong>（见下方「云端同步」区）：数据自动备份到你的私有 GitHub gist，换设备填「同步钥匙」即可恢复。<br>
+        💾 <strong>本地导出</strong>：再存一份 JSON 在自己电脑/微信里，防云端与浏览器双重意外。<br>
+        <span class="sub" style="color:var(--muted);font-size:12px">建议每 1–2 周点一次「⬇ 导出备份（JSON）」，存进微信收藏。</span>
+      </div>
     </div>
 
     <div class="card">
