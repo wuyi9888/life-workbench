@@ -151,31 +151,10 @@
     try { if (typeof ImgStore !== 'undefined') { const ids = S().quotes.filter(q => typeof q.image === 'string' && q.image.startsWith('img://')).map(q => q.image.slice(6)); if (ids.length) ImgStore.preload(ids); } } catch (e) { console.warn('preload fail', e); }
     try { renderNav(); } catch (e) { console.warn('renderNav fail', e); }
     try { renderBrand(); } catch (e) { console.warn('renderBrand fail', e); }
-    // 顶栏标题：总览页显示每日一句寄语（点击查看当日寄语），其余页面显示页面名
+    // 顶栏标题：总览页固定显示一句寄语（点击可查看今日寄语）；其余页面显示页面名
     const titleEl = $('#viewTitle');
     if (current === 'overview') {
-      const q = todayQuote();
-      // 已有专属寄语缓存则优先
-      const cached = S().aiQuotes && S().aiQuotes[T()];
-      const showQ = cached ? { text: cached.text, src: cached.src || 'AI 专属寄语' } : q;
-      titleEl.innerHTML = `<span class="title-quote" data-action="show-quote" title="点击查看当日寄语">💬 ${esc(showQ.text)}</span>`;
-      // 配置了 API、今天还没生成过、且不在请求中/未失败 → 生成专属（只触发一次，避免重复请求卡页面）
-      if (!cached && S().settings.apiKey && !ui.quoteLoading && !ui.quoteFailed) {
-        ui.quoteLoading = true;
-        generateDailyQuote(titleEl).catch(() => {}).finally(() => { ui.quoteLoading = false; });
-      } else if (!cached && !S().quotes.length && !ui.quoteLoading) {
-        // 无 API 且无语录时，网络名言增强（失败保留当前句）
-        ui.quoteLoading = true;
-        fetchOnlineQuote(4000).then(nq => {
-          if (nq) {
-            const span = titleEl.querySelector('.title-quote');
-            if (span) {
-              ui.onlineQuote = nq;
-              span.innerHTML = `💬 ${esc(nq.text)}`;
-            }
-          }
-        }).catch(() => {}).finally(() => { ui.quoteLoading = false; });
-      }
+      titleEl.innerHTML = '<span class="title-fixed" data-action="show-quote" title="点击查看今日寄语">别怕，会更好的<span class="heart">♥</span></span>';
     } else {
       titleEl.innerHTML = esc(TITLES[current] || '工作台');
     }
