@@ -2535,26 +2535,6 @@
     </div>
 
     <div class="card">
-      <h2>📥 批量导入（flomo / 微信随手记）</h2>
-      <div class="note" style="line-height:1.8">
-        <strong>① 从 flomo HTML 直接导入：</strong>选 flomo 导出的 <code>*.HTML</code> 文件，自动按标签和原始时间戳分类。<br>
-        <strong>② 智能导入（推荐）：</strong>微信聊天记录、随手记、口语流水账 — 直接粘贴，AI 自动识别归类，预览确认后一键导入。
-      </div>
-      <div class="row" style="margin-bottom:12px;gap:8px;flex-wrap:wrap">
-        <button class="btn primary sm" data-action="flomo-import">📂 从 flomo HTML 文件直接导入</button>
-        <input type="file" id="flomoFile" accept=".html,.htm,text/html" class="hidden">
-        <span class="sub" style="color:var(--muted);font-size:12px">支持 flomo 网页版导出的 HTML · 自动保留原始时间戳</span>
-      </div>
-      <textarea id="batchImportText" placeholder="直接粘贴微信聊天记录、随手记、灵感片段…&#10;AI 会自动识别分类：语录/灵感/收藏/感恩/复盘/素材&#10;&#10;比如：&#10;今天看到一句话特别好：慢慢来比较快&#10;下午想到一个选题，用语文老师的角度看AI时代的学习&#10;感恩今天阳光很好，心情不错" style="min-height:120px;font-family:var(--font-mono,monospace);font-size:13px"></textarea>
-      <div class="row" style="margin-top:10px;align-items:flex-end;gap:8px;flex-wrap:wrap">
-        <button class="btn primary" data-action="smart-import">🤖 智能导入（AI 识别→预览→确认）</button>
-        <button class="btn sm" data-action="batch-import" style="font-size:12px">⚡ 手动词法导入</button>
-        <span class="sub" style="color:var(--muted);font-size:12px">智能导入手动词法均追加导入，不会覆盖已有数据</span>
-      </div>
-      <div id="importPreview" class="hidden" style="margin-top:12px"></div>
-    </div>
-
-    <div class="card">
       <h2>🤖 AI 配置（可选 · 已预置 DeepSeek）</h2>
       <div class="note">默认已填好 DeepSeek 接口，你只需要把 <strong>API Key</strong> 粘贴进来、点保存。可在下方一键<strong>测试连接</strong>验证 Key 和模型是否可用。留空也能用——会生成提示词让你复制到任意 AI 工具。</div>
       <div class="row" style="align-items:center;gap:8px;flex-wrap:wrap;margin-top:6px">
@@ -2755,6 +2735,7 @@
   /* ---------- 智能导入预览面板 ---------- */
   function mountImportPreview(organizedText) {
     var preview = $('#importPreview');
+    if (!preview) return; // 批量导入卡片已从设置页移除，此面板不存在
     preview.classList.remove('hidden');
     // 解析分类
     var sections = {};
