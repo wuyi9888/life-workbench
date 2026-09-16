@@ -2039,26 +2039,78 @@
     const s = S();
     return !!(s.workout.records && s.workout.records[T()]);
   }
+  /* ---------- 生活打卡：早 / 中 / 晚 固定 routine ---------- */
+  // 时段定义（顺序即页面顺序；'' 为「其他」兜底）
+  const HABIT_PERIODS = [
+    { key: 'morning', label: '早上', sub: '起床后', ico: '🌅' },
+    { key: 'noon', label: '中午', sub: '午间', ico: '🌤' },
+    { key: 'night', label: '晚上', sub: '睡前', ico: '🌙' },
+    { key: '', label: '其他', sub: '未归入时段', ico: '📌' }
+  ];
+  // 我的一日 routine 预设：同 group 的小动作排在同一行（一键套用）
+  const ROUTINE_PRESET = [
+    { period: 'morning', group: 'm1', names: ['淘宝打卡', '人民日报早班车'] },
+    { period: 'morning', group: 'm2', names: ['早上拉伸', '读书'] },
+    { period: 'morning', group: 'm3', names: ['吃早饭', '瘦脸'] },
+    { period: 'noon', group: 'n1', names: ['敲八经', '午睡'] },
+    { period: 'night', group: 'e1', names: ['臀桥', '练背', '平板支撑'] },
+    { period: 'night', group: 'e2', names: ['晚间拉伸', '复盘反思'] }
+  ];
+  // 别名：老习惯名 → 预设名（套用时保留原 id 与历史记录）
+  const ROUTINE_ALIAS = { '瘦脸操': '瘦脸', '复盘': '复盘反思', '臀腿': '臀桥', '拉伸': '早上拉伸' };
+
+  // 按时段取「行」：同 group 且相邻的合并成一行，保持 definitions 的固定顺序
+  function habitRows(defs, periodKey) {
+    const rows = [];
+    defs.filter(d => (d.period || '') === periodKey).forEach(d => {
+      const g = d.group || '';
+      const last = rows[rows.length - 1];
+      if (g && last && last.g === g) last.items.push(d);
+      else rows.push({ g: g || '@' + d.id, items: [d] });
+    });
+    return rows;
+  }
+
+  // 单个小动作的打卡小方块
+  function habitChip(d, rec) {
+    const st = habitState(rec, d.id);
+    const cls = st.s === 'done' ? 'on' : (st.s === 'partial' ? 'part' : '');
+    const icon = st.s === 'done' ? '✓' : (st.s === 'partial' ? '◐' : '');
+    const streak = habitStreak(d);
+    const unit = d.type === 'weekly-thu' ? '周' : '天';
+    const tip = '点击切换：未打卡 → 完成 → 部分完成' + (st.note ? '｜备注：' + st.note : '');
+    return `<button type="button" class="hb-chip ${cls}" data-action="cycle-habit" data-id="${d.id}" title="${esc(tip)}">
+      <span class="hb-box">${icon}</span>
+      <span class="hb-name">${esc(d.name)}</span>
+      ${streak ? `<span class="hb-streak">${streak}${unit}</span>` : ''}
+      ${st.note ? '<span class="hb-note">💬</span>' : ''}
+    </button>`;
+  }
+
   function renderHabits() {
     const s = S(); const t = T(); const rec = s.habits.records[t] || {};
-    const list = s.habits.definitions.map(d => {
-      const st = habitState(rec, d.id);
-      const streak = habitStreak(d);
-      const cls = st.s === 'done' ? 'on' : (st.s === 'partial' ? 'part' : '');
-      const icon = st.s === 'done' ? '✓' : (st.s === 'partial' ? '◐' : '');
-      return `<div class="habit">
-        <div class="left">
-          <div class="check ${cls}" data-action="cycle-habit" data-id="${d.id}" title="点击切换：未打卡 → 完成 → 部分完成">${icon}</div>
-          <div><div class="title">${esc(d.name)}</div><div class="streak">${d.type === 'weekly-thu' ? '每周四 · ' : '每日 · '}连续 ${streak} ${d.type === 'weekly-thu' ? '周' : '天'}${st.s === 'partial' ? ' · 已部分完成' : ''}</div>
-            ${st.note ? `<div class="sub" style="color:var(--muted);font-size:12px">💬 ${esc(st.note)}</div>` : ''}
-          </div>
+    const defs = s.habits.definitions;
+
+    // 三个时段分区
+    const zonesHtml = HABIT_PERIODS.map(p => {
+      const rows = habitRows(defs, p.key);
+      const total = rows.reduce((n, r) => n + r.items.length, 0);
+      if (!total) return '';
+      const doneN = rows.reduce((n, r) => n + r.items.filter(d => habitState(rec, d.id).s === 'done').length, 0);
+      const allDone = doneN === total;
+      const rowsHtml = rows.map((r, i) => `
+        <div class="hb-row">
+          <span class="hb-idx">${i + 1}</span>
+          <div class="hb-items">${r.items.map(d => habitChip(d, rec)).join('')}</div>
+        </div>`).join('');
+      return `<div class="hb-zone ${allDone ? 'all-done' : ''}">
+        <div class="hb-zone-head">
+          <span class="hb-zone-title">${p.ico} ${p.label}<em>（${p.sub}）</em></span>
+          <span class="hb-zone-prog ${allDone ? 'ok' : ''}">${doneN}/${total}${allDone ? ' ✓ 完成' : ''}</span>
         </div>
-        <div class="tools" style="display:flex;align-items:center;gap:6px">
-          <button class="btn sm" data-action="habit-note" data-id="${d.id}">备注</button>
-          <button class="icon-btn" data-action="del-habit" data-id="${d.id}">🗑</button>
-        </div>
+        ${rowsHtml}
       </div>`;
-    }).join('') || '<div class="empty">还没有习惯，先加一个</div>';
+    }).join('');
 
     // 复盘待跟进问题（打卡↔复盘联动提醒）
     const allP = [];
@@ -2070,6 +2122,40 @@
         <button class="btn sm" style="margin-left:8px;background:#fff;color:#854F0B" data-action="nav" data-sec="review">去处理</button>
       </div>` : '';
 
+    // 管理区（改时段 / 改频率 / 删除 / 添加 / 一键套用 routine）
+    const manage = `
+      <details class="hb-manage">
+        <summary>⚙️ 管理习惯（改时段 · 添加 · 删除）</summary>
+        <div class="note" style="line-height:1.8">
+          顺序 = 上面的固定顺序，改「时段」就会自动归位。同一「分组」的小动作排在同一行。<br>
+          <strong>⚡ 一键套用</strong>会把你的一日 routine（早/中/晚）铺好，并按名称匹配已有习惯、<strong>保留历史记录</strong>；不在 routine 里的习惯会被放到「其他」，不会删。
+        </div>
+        <div class="row" style="margin:8px 0">
+          <button class="btn primary sm" data-action="apply-routine-preset">⚡ 一键套用我的一日 routine（早/中/晚）</button>
+        </div>
+        <div class="hb-mlist">
+        ${defs.map(d => `<div class="hb-mrow">
+            <div class="grow"><div class="title">${esc(d.name)}</div>
+              <div class="sub">${d.type === 'weekly-thu' ? '每周四' : '每日'}${d.group ? ' · 分组 ' + esc(d.group) : ''}</div></div>
+            <select data-change="habit-period" data-id="${d.id}" style="width:auto">
+              ${HABIT_PERIODS.map(p => `<option value="${p.key}" ${(d.period || '') === p.key ? 'selected' : ''}>${p.label}</option>`).join('')}
+            </select>
+            <select data-change="habit-type" data-id="${d.id}" style="width:auto">
+              <option value="daily" ${d.type !== 'weekly-thu' ? 'selected' : ''}>每日</option>
+              <option value="weekly-thu" ${d.type === 'weekly-thu' ? 'selected' : ''}>每周四</option>
+            </select>
+            <button class="icon-btn" data-action="habit-note" data-id="${d.id}" title="写今日备注">💬</button>
+            <button class="icon-btn" data-action="del-habit" data-id="${d.id}" title="删除">🗑</button>
+          </div>`).join('')}
+        </div>
+        <form data-form="add-habit" class="row" style="align-items:flex-end;margin-top:10px">
+          <div style="flex:2"><label>名称</label><input name="name" placeholder="如 喝水 2L" required></div>
+          <div style="flex:1"><label>时段</label><select name="period">${HABIT_PERIODS.map(p => `<option value="${p.key}">${p.label}</option>`).join('')}</select></div>
+          <div style="flex:1"><label>频率</label><select name="type"><option value="daily">每日</option><option value="weekly-thu">每周四</option></select></div>
+          <button class="btn primary sm">添加</button>
+        </form>
+      </details>`;
+
     // ---- 运动安排（右列） ----
     const workout = renderWorkoutPanel();
 
@@ -2077,15 +2163,10 @@
     <div class="grid grid-2 habits-grid">
       <div class="card">
         <h2>✅ 今日打卡 · ${esc(t)} ${Store.isThursday(t) ? '· 周四（记得听姜思达播客）' : ''}</h2>
-        <div class="note">点击左侧方框切换状态：<strong>✓ 完成 → ◐ 部分完成 → 取消</strong>。连续天数按"完成"累计；每周四专属习惯只在周四计入。</div>
+        <div class="note">点一下小方块切换：<strong>未打卡 → ✓ 完成 → ◐ 部分完成 → 取消</strong>。冒号右边是连续天数。同一行的小动作是一组，可以分开勾。</div>
         ${pendNote}
-        ${list}
-        <h3 style="margin-top:14px">➕ 添加习惯</h3>
-        <form data-form="add-habit" class="row" style="align-items:flex-end">
-          <div style="flex:2"><label>名称</label><input name="name" placeholder="如 早上拉伸" required></div>
-          <div style="flex:1"><label>频率</label><select name="type"><option value="daily">每日</option><option value="weekly-thu">每周四</option></select></div>
-          <button class="btn primary sm">添加</button>
-        </form>
+        ${zonesHtml || '<div class="empty">还没有习惯。<br>打开下面的「管理习惯」加一个，或点「一键套用我的一日 routine」。</div>'}
+        ${manage}
       </div>
 
       <div class="card">
@@ -3893,8 +3974,31 @@
       }
       case 'add-habit': {
         if (!get('name')) break;
-        s.habits.definitions.push({ id: Store.uid(), name: get('name'), type: get('type') || 'daily' });
+        s.habits.definitions.push({ id: Store.uid(), name: get('name'), type: get('type') || 'daily', period: get('period') || '', group: '' });
         Store.save(); render(); toast('已添加习惯'); break;
+      }
+      case 'apply-routine-preset': {
+        if (!confirm('套用「我的一日 routine」？\n\n会按早/中/晚 铺好下面这些：\n🌅 淘宝打卡 + 人民日报早班车 / 早上拉伸 + 读书 / 吃早饭 + 瘦脸\n🌤 敲八经 + 午睡\n🌙 臀桥 + 练背 + 平板支撑 / 晚间拉伸 + 复盘反思\n\n按名称匹配已有习惯（保留历史记录），缺的自动补上；不在 routine 里的习惯会被移到「其他」，不会被删。')) break;
+        const defs = s.habits.definitions;
+        // 老名 → 预设名 的归一
+        const byName = {};
+        defs.forEach(d => { const nm = ROUTINE_ALIAS[d.name] || d.name; if (!byName[nm]) byName[nm] = d; });
+        const ordered = []; const used = new Set(); let added = 0; let renamed = 0;
+        ROUTINE_PRESET.forEach(g => {
+          g.names.forEach(nm => {
+            let d = byName[nm];
+            if (!d) { d = { id: Store.uid(), name: nm, type: 'daily' }; added++; }
+            else if (d.name !== nm) { d.name = nm; renamed++; }
+            d.period = g.period; d.group = g.group;
+            ordered.push(d); used.add(d.id);
+          });
+        });
+        // 其余习惯保留，归入「其他」
+        defs.forEach(d => { if (!used.has(d.id)) { d.period = ''; d.group = ''; ordered.push(d); } });
+        s.habits.definitions = ordered;
+        Store.save(); render();
+        toast('✅ 已套用一日 routine' + (added ? '，新增 ' + added + ' 项' : '') + (renamed ? '，改名 ' + renamed + ' 项' : ''));
+        break;
       }
       case 'save-period': {
         s.workout.period = s.workout.period || {};
@@ -3988,6 +4092,16 @@
           const b = cur.books.find(x => x.id === el.dataset.id);
           if (b) { b.status = el.value; Store.save(); render(); }
         }
+        break;
+      }
+      case 'habit-period': {
+        const h = s.habits.definitions.find(x => x.id === el.dataset.id);
+        if (h) { h.period = el.value; if (!h.group) h.group = ''; Store.save(); render(); }
+        break;
+      }
+      case 'habit-type': {
+        const h = s.habits.definitions.find(x => x.id === el.dataset.id);
+        if (h) { h.type = el.value; Store.save(); render(); }
         break;
       }
     }
