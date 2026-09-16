@@ -66,15 +66,22 @@
       wishlist: { items: [] }, // 愿望清单：{ id, text, category, status:'许愿中'|'已实现'|'已放下', date, createdAt, statusDate }
       journals: { entries: [] }, // 每日随笔：{ id, date, createdAt, updatedAt, content, mood }
       habits: {
+        // period: 'morning' | 'noon' | 'night' | ''（空=其他）
+        // group : 同组的小动作排在同一行（'' 或不同值=各自单独一行）
         definitions: [
-          { id: uid(), name: '早上拉伸', type: 'daily' },
-          { id: uid(), name: '瘦脸操', type: 'daily' },
-          { id: uid(), name: '敲八经', type: 'daily' },
-          { id: uid(), name: '读书', type: 'daily' },
-          { id: uid(), name: '下午学AI', type: 'daily' },
-          { id: uid(), name: '晚上运动', type: 'daily' },
-          { id: uid(), name: '复盘', type: 'daily' },
-          { id: uid(), name: '姜思达播客', type: 'weekly-thu' }
+          { id: uid(), name: '淘宝打卡', type: 'daily', period: 'morning', group: 'm1' },
+          { id: uid(), name: '人民日报早班车', type: 'daily', period: 'morning', group: 'm1' },
+          { id: uid(), name: '早上拉伸', type: 'daily', period: 'morning', group: 'm2' },
+          { id: uid(), name: '读书', type: 'daily', period: 'morning', group: 'm2' },
+          { id: uid(), name: '吃早饭', type: 'daily', period: 'morning', group: 'm3' },
+          { id: uid(), name: '瘦脸', type: 'daily', period: 'morning', group: 'm3' },
+          { id: uid(), name: '敲八经', type: 'daily', period: 'noon', group: 'n1' },
+          { id: uid(), name: '午睡', type: 'daily', period: 'noon', group: 'n1' },
+          { id: uid(), name: '臀桥', type: 'daily', period: 'night', group: 'e1' },
+          { id: uid(), name: '练背', type: 'daily', period: 'night', group: 'e1' },
+          { id: uid(), name: '平板支撑', type: 'daily', period: 'night', group: 'e1' },
+          { id: uid(), name: '晚间拉伸', type: 'daily', period: 'night', group: 'e2' },
+          { id: uid(), name: '复盘反思', type: 'daily', period: 'night', group: 'e2' }
         ],
         records: {} // { '2026-07-27': { habitId: true | { s:'done'|'partial', note:'' } } }
       },
@@ -151,6 +158,11 @@
         state.media = state.media || def.media;
         state.habits.definitions = Array.isArray(state.habits.definitions) ? state.habits.definitions : def.habits.definitions;
         state.habits.records = state.habits.records || {};
+        // 升级：习惯按时段（早/中/晚）分组（旧数据没有这两个字段 → 归入「其他」）
+        state.habits.definitions.forEach(h => {
+          if (typeof h.period !== 'string') h.period = '';
+          if (typeof h.group !== 'string') h.group = '';
+        });
         state.goals.books = Array.isArray(state.goals.books) ? state.goals.books : [];
         state.goals.weeklyPlan = state.goals.weeklyPlan || {};
         // 升级：主题阅读营（旧备份没有）
