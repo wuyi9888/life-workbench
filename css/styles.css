@@ -275,6 +275,59 @@ label { font-size: 13px; color: var(--muted); font-weight: 600; display: block; 
 .check.part { background: var(--warn); border-color: var(--warn); }
 .streak { font-size: 12px; color: var(--muted); }
 
+/* ---------- 生活打卡：早 / 中 / 晚 分区 ---------- */
+.hb-zone {
+  margin-bottom: 14px; padding: 10px 12px 12px;
+  border: 1px solid rgba(200,210,230,0.55); border-radius: 14px;
+  background: rgba(255,255,255,0.5);
+}
+[data-theme="dark"] .hb-zone { background: rgba(23,29,46,0.62); border-color: rgba(42,50,69,0.6); }
+.hb-zone.all-done { border-color: rgba(34,197,94,0.55); background: rgba(34,197,94,0.06); }
+[data-theme="dark"] .hb-zone.all-done { background: rgba(34,197,94,0.10); }
+.hb-zone-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+.hb-zone-title { font-weight: 700; font-size: 14px; color: var(--text); }
+.hb-zone-title em { font-style: normal; font-weight: 400; font-size: 12px; color: var(--muted); }
+.hb-zone-prog { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.hb-zone-prog.ok { color: var(--good); font-weight: 600; }
+.hb-row { display: flex; align-items: flex-start; gap: 8px; padding: 4px 0; }
+.hb-idx {
+  flex: 0 0 18px; height: 18px; margin-top: 6px; border-radius: 50%;
+  background: var(--surface-2); color: var(--muted);
+  font-size: 11px; display: grid; place-items: center; font-variant-numeric: tabular-nums;
+}
+.hb-items { display: flex; flex-wrap: wrap; gap: 6px; flex: 1; }
+.hb-chip {
+  display: inline-flex; align-items: center; gap: 7px; line-height: 1.2;
+  padding: 7px 11px 7px 8px; font: inherit; font-size: 13px; color: var(--text);
+  border: 1px solid rgba(200,210,230,0.75); border-radius: 999px;
+  background: var(--surface); cursor: pointer; transition: .15s;
+}
+[data-theme="dark"] .hb-chip { border-color: rgba(42,50,69,0.85); }
+.hb-chip:hover { border-color: var(--primary); }
+.hb-chip .hb-box {
+  width: 19px; height: 19px; border-radius: 6px; border: 2px solid var(--border);
+  display: grid; place-items: center; color: #fff; font-size: 12px; flex-shrink: 0; transition: .15s;
+}
+.hb-chip.on { background: rgba(34,197,94,0.10); border-color: rgba(34,197,94,0.45); }
+.hb-chip.on .hb-box { background: var(--good); border-color: var(--good); }
+.hb-chip.on .hb-name { text-decoration: line-through; text-decoration-color: rgba(34,197,94,0.6); }
+.hb-chip.part { background: rgba(245,158,11,0.10); border-color: rgba(245,158,11,0.45); }
+.hb-chip.part .hb-box { background: var(--warn); border-color: var(--warn); }
+.hb-chip .hb-streak {
+  font-size: 11px; color: var(--muted); background: var(--surface-2);
+  border-radius: 999px; padding: 1px 6px; font-variant-numeric: tabular-nums;
+}
+.hb-chip .hb-note { font-size: 11px; }
+/* 管理区 */
+.hb-manage { margin-top: 14px; padding-top: 10px; border-top: 1px dashed var(--border); }
+.hb-manage > summary { cursor: pointer; font-weight: 600; font-size: 13px; color: var(--primary); }
+.hb-mlist { margin-top: 8px; }
+.hb-mrow { display: flex; align-items: center; gap: 6px; padding: 7px 0; border-bottom: 1px solid var(--border); }
+.hb-mrow .grow { flex: 1; min-width: 0; }
+.hb-mrow .title { font-size: 13px; font-weight: 600; }
+.hb-mrow .sub { font-size: 11px; color: var(--muted); }
+.hb-mrow select { font-size: 12px; padding: 4px 6px; }
+
 /* ---------- 进度条 ---------- */
 .progress { height: 8px; background: var(--surface-2); border-radius: 999px; overflow: hidden; }
 .progress > span { display: block; height: 100%; background: linear-gradient(90deg, var(--primary), var(--accent)); }
