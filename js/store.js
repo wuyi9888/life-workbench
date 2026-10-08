@@ -99,6 +99,11 @@
         topics: [],    // 选题库：{ id, title, angle, status, scheduledDate, note }
         publishes: []  // 发布记录：{ id, date, title, platform, link, stats:{likes,collects,comments,views}, note }
       },
+      // —— 格局线（每日一集：历史/诗词人物 + 毛选方法论）——
+      // 内容在 js/growth.js（随站点更新），这里只存「我自己的痕迹」
+      growth: {
+        records: {} // { 'sushi-1': { done:true, at:'2026-10-09', out:'我的一句话', outAt:'' } }
+      },
       reports: [], // 洞察报告历史：{ id, type:'week'|'month', period, copy, createdAt }
       aiQuotes: {}, // 专属每日寄语缓存 { '2026-08-03': { text, src, from } }
       todos: [], // 待办清单：{ id, text, note, done, createdAt }
@@ -190,6 +195,9 @@
         state.media.materials = Array.isArray(state.media.materials) ? state.media.materials : [];
         state.media.topics = Array.isArray(state.media.topics) ? state.media.topics : [];
         state.media.publishes = Array.isArray(state.media.publishes) ? state.media.publishes : [];
+        // 升级：格局线（旧备份没有）
+        state.growth = state.growth && typeof state.growth === 'object' ? state.growth : { records: {} };
+        state.growth.records = state.growth.records || {};
         // 升级：洞察报告
         state.reports = state.reports || [];
         // 升级：专属寄语缓存
@@ -261,6 +269,7 @@
     if (!m) return false;
     if (!(empty(m.ideas) && empty(m.generated) && empty(m.materials) && empty(m.topics) && empty(m.publishes))) return false;
     if (!(st.camp && !st.camp.current && empty(st.camp.history) && empty(st.camp.candidates))) return false;
+    if (!(st.growth && !st.growth.records) || (st.growth && st.growth.records && Object.keys(st.growth.records).length)) return false;
     if (!(st.habits && empty(st.habits.records))) return false;
     if (!(st.workout && empty(st.workout.records))) return false;
     return true;

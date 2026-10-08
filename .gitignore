@@ -4,3 +4,6 @@ node_modules/
 *.log
 Thumbs.db
 .DS_Store
+
+# 本地改动前的备份（不推送）
+*.bak_growth

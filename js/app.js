@@ -93,6 +93,7 @@
   const SECTIONS = [
     { id: 'overview', label: '总览', ico: '🏠' },
     { id: 'goals', label: '主题读书', ico: '📚' },
+    { id: 'growth', label: '格局线', ico: '📜' },
     { id: 'favorites', label: '收藏清理', ico: '🧹' },
     { id: 'quotes', label: '语录整理', ico: '💬' },
     { id: 'gratitude', label: '感恩日记', ico: '🌿' },
@@ -104,10 +105,10 @@
     { id: 'todos', label: '待办清单', ico: '📝' },
     { id: 'settings', label: '设置', ico: '⚙️' }
   ];
-  const TITLES = { overview: '今日 · 寄语', goals: '主题阅读营', favorites: '收藏夹清理', quotes: '语录整理', gratitude: '感恩日记', wishlist: '愿望清单', review: '复盘 · 随笔 · 体检', insight: '洞察 · 周报/月报', habits: '生活打卡 · 秩序', media: '自媒体 · 内容', todos: '待办清单', settings: '设置 · 数据', more: '全部板块' };
+  const TITLES = { overview: '今日 · 寄语', goals: '主题阅读营', growth: '格局线 · 每日一集', favorites: '收藏夹清理', quotes: '语录整理', gratitude: '感恩日记', wishlist: '愿望清单', review: '复盘 · 随笔 · 体检', insight: '洞察 · 周报/月报', habits: '生活打卡 · 秩序', media: '自媒体 · 内容', todos: '待办清单', settings: '设置 · 数据', more: '全部板块' };
 
   let current = 'overview';
-  const ui = { week: Store.isoWeek(), favFilter: 'pending', reviewTab: 'list', quoteFilter: 'all', quoteExpanded: null, quoteEditing: null, shelfView: 'covers', shelfExpanded: null, insightType: 'week', insightExpanded: null, mediaTab: 'idea', posOpen: false, onlineQuote: null, catOpen: {}, quoteLoading: false, quoteFailed: false, apiConfigOpen: false, coachSessions: {}, syncStatusText: '同步未开始', todoFilter: 'all', campBookOpen: null, campHistoryOpen: false, journalEdit: null };
+  const ui = { week: Store.isoWeek(), favFilter: 'pending', reviewTab: 'list', quoteFilter: 'all', quoteExpanded: null, quoteEditing: null, shelfView: 'covers', shelfExpanded: null, insightType: 'week', insightExpanded: null, mediaTab: 'idea', posOpen: false, onlineQuote: null, catOpen: {}, quoteLoading: false, quoteFailed: false, apiConfigOpen: false, coachSessions: {}, syncStatusText: '同步未开始', todoFilter: 'all', campBookOpen: null, campHistoryOpen: false, journalEdit: null, gdOpen: {}, gdArc: '' };
 
   // 图片字段解析：'img://img_xxx' 引用 → IndexedDB dataURL；旧 dataURL 原样返回
   function resolveImg(v) {
@@ -140,7 +141,7 @@
   }
 
   const RENDERERS = {
-    overview: renderOverview, goals: renderGoals, favorites: renderFavorites, quotes: renderQuotes,
+    overview: renderOverview, goals: renderGoals, growth: renderGrowth, favorites: renderFavorites, quotes: renderQuotes,
     gratitude: renderGratitude, review: renderReview, insight: renderInsight,
     habits: renderHabits, media: renderMedia, todos: renderTodos, wishlist: renderWishlist, settings: renderSettings,
     more: renderMoreGrid
@@ -184,7 +185,7 @@
   // 手机「更多」宫格：收纳低频板块（桌面侧栏仍全量直达）
   function renderMoreGrid() {
     const kept = MOBILE_BOTTOM.slice(0, 5);
-    const brief = { goals: '目标追踪 · 周计划 · 书架笔记', favorites: '收藏清理 · 转素材 · AI 清理', quotes: '金句收藏 · 置顶 · 配图', gratitude: '每日感恩 1–3 件小事', insight: '周报/月报 · 问答洞察', settings: '云端同步 · AI · 导入 · 备份' };
+    const brief = { goals: '目标追踪 · 周计划 · 书架笔记', growth: '每日一集 · 历史人物 · 毛选', favorites: '收藏清理 · 转素材 · AI 清理', quotes: '金句收藏 · 置顶 · 配图', gratitude: '每日感恩 1–3 件小事', insight: '周报/月报 · 问答洞察', settings: '云端同步 · AI · 导入 · 备份' };
     const more = SECTIONS.filter(x => !kept.includes(x.id)).map(x => `
       <div class="more-card" data-action="nav" data-sec="${x.id}">
         <div class="more-ico">${x.ico}</div>
@@ -293,6 +294,7 @@
     <div class="card">
       <h2>⚡ 快捷记录</h2>
       <div class="grid grid-2">
+        <button class="btn" data-action="nav" data-sec="growth">📜 今日一集</button>
         <button class="btn" data-action="go-journal">📖 写随笔</button>
         <button class="btn" data-action="go-review">🪞 写复盘</button>
         <button class="btn" data-action="nav" data-sec="gratitude">🌿 写感恩</button>
@@ -932,6 +934,236 @@
     lines.push('四、我打算怎么验证效果（体感、睡眠记录、精力日志等）。');
     lines.push('如果某部分我没有足够记录支撑，就明说"这部分还没读到/没想清楚"，不要编。');
     return lines.join('\n');
+  }
+
+  /* ============================================================
+   * 格局线 · 每日一集
+   * 内容在 js/growth.js（window.GROWTH，随站点更新）；
+   * 打卡 / 输出痕迹存在 S().growth.records（本地 + 云端同步）
+   * ============================================================ */
+  function G() { return (typeof window !== 'undefined' && window.GROWTH) ? window.GROWTH : null; }
+  function gdKey(arcKey, seq) { return arcKey + '-' + seq; }
+  function gdRec(key) {
+    const s = S(); s.growth = s.growth || { records: {} }; s.growth.records = s.growth.records || {};
+    return Object.assign({ done: false, at: '', out: '', outAt: '' }, s.growth.records[key] || {});
+  }
+  function gdSave(key, patch) {
+    const s = S(); s.growth = s.growth || { records: {} }; s.growth.records = s.growth.records || {};
+    s.growth.records[key] = Object.assign({ done: false, at: '', out: '', outAt: '' }, s.growth.records[key] || {}, patch);
+    Store.save();
+  }
+  // 轻量 Markdown：## 小标题 / > 引用 / - 列表 / **加粗**
+  function mdInline(t) { return esc(t).replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>'); }
+  function mdLite(md) {
+    const lines = String(md || '').split(/\r?\n/);
+    let out = '', li = [];
+    const flush = () => { if (li.length) { out += '<ul class="gd-ul">' + li.join('') + '</ul>'; li = []; } };
+    lines.forEach(raw => {
+      const l = raw.trim();
+      if (!l) { flush(); return; }
+      if (l.indexOf('## ') === 0) { flush(); out += '<h3 class="gd-h3">' + mdInline(l.slice(3)) + '</h3>'; }
+      else if (l.indexOf('> ') === 0) { flush(); out += '<blockquote class="gd-bq">' + mdInline(l.slice(2)) + '</blockquote>'; }
+      else if (l.indexOf('- ') === 0) { li.push('<li>' + mdInline(l.slice(2)) + '</li>'); }
+      else { flush(); out += '<p class="gd-p">' + mdInline(l) + '</p>'; }
+    });
+    flush();
+    return out;
+  }
+  // 连续打卡天数（只数「格局线」自身的打卡日）
+  function gdStreak() {
+    const s = S(); const rec = (s.growth && s.growth.records) || {};
+    const days = {};
+    Object.keys(rec).forEach(k => { if (rec[k] && rec[k].done && rec[k].at) days[String(rec[k].at).slice(0, 10)] = 1; });
+    let d = T(), n = 0;
+    if (!days[d]) d = Store.addDays(d, -1);
+    while (days[d]) { n++; d = Store.addDays(d, -1); }
+    return n;
+  }
+  function gdArcEps(arc) { return (arc.episodes || []).slice().sort(function (a, b) { return a.seq - b.seq; }); }
+  function gdReadSeqs(arc, rec) {
+    return gdArcEps(arc).filter(function (e) { return rec[gdKey(arc.key, e.seq)] && rec[gdKey(arc.key, e.seq)].done; }).map(function (e) { return e.seq; });
+  }
+  // 一生时间链条：整条一屏排下，已读过的集对应节点点亮
+  function gdTimelineHtml(arc, rec) {
+    const tl = arc.timeline || [];
+    if (!tl.length) return '';
+    const n = tl.length;
+    const readSeqs = gdReadSeqs(arc, rec);
+    const maxRead = readSeqs.length ? Math.max.apply(null, readSeqs) : 0;
+    let lastIdx = -1;
+    tl.forEach(function (x, i) { if (x.ep && maxRead && x.ep <= maxRead) lastIdx = i; });
+    const pct = (lastIdx >= 0 && n > 1) ? (lastIdx / (n - 1)) : 0;
+    const nodes = tl.map(function (x) {
+      const read = !!(x.ep && maxRead && x.ep <= maxRead);
+      const cur = !!(x.ep && x.ep === maxRead);
+      return '<div class="gd-tln' + (read ? ' read' : '') + (cur ? ' cur' : '') + '" title="' + esc(x.y + ' ' + x.t) + '">'
+        + '<span class="gd-tld"></span>'
+        + '<span class="gd-tly">' + esc(x.y) + '</span>'
+        + '</div>';
+    }).join('');
+    return '<div class="gd-tl-wrap"><div class="gd-tl" style="--n:' + n + '">'
+      + '<span class="gd-tl-prog" style="width:calc((100% - 100% / ' + n + ') * ' + (pct || 0) + ')"></span>'
+      + nodes + '</div></div>';
+  }
+  // 全部节点清单（点开看每个节点是什么事）
+  function gdNodeListHtml(arc, rec) {
+    const tl = arc.timeline || [];
+    if (!tl.length) return '';
+    const readSeqs = gdReadSeqs(arc, rec);
+    const maxRead = readSeqs.length ? Math.max.apply(null, readSeqs) : 0;
+    const items = tl.map(function (x) {
+      const read = !!(x.ep && maxRead && x.ep <= maxRead);
+      return '<div class="gd-node-item' + (read ? ' read' : '') + '">'
+        + '<span class="gd-ni-y">' + esc(x.y) + '</span>'
+        + '<span class="gd-ni-t">' + esc(x.t) + '</span></div>';
+    }).join('');
+    return '<details class="gd-nodes"><summary>🗺 展开全部 ' + tl.length + ' 个节点（每年发生了什么）</summary>'
+      + '<div class="gd-node-grid">' + items + '</div></details>';
+  }
+  // 本集落在链条的哪个位置
+  function gdNodeHint(arc, ep) {
+    const tl = arc.timeline || [];
+    if (!tl.length || !ep.nodes || !ep.nodes.length) return '';
+    const picked = ep.nodes.map(function (i) { return tl[i]; }).filter(Boolean);
+    if (!picked.length) return '';
+    const txt = picked.map(function (n) { return n.y + ' ' + n.t; }).join('　→　');
+    return '<div class="gd-node-hint">📍 这一集落在链条的这个位置：<b>' + esc(txt) + '</b></div>';
+  }
+  function gdEpisodeCard(arc, ep, opts) {
+    opts = opts || {};
+    const key = gdKey(arc.key, ep.seq);
+    const r = gdRec(key);
+    const big = !!opts.big;
+    const openAttr = ui.gdOpen[key] !== undefined ? (ui.gdOpen[key] ? ' open' : '') : (big ? ' open' : '');
+    const pts = (ep.points || []).map(function (p) { return '<li>' + mdInline(p) + '</li>'; }).join('');
+    return '<div class="card gd-ep' + (r.done ? ' is-done' : '') + (big ? ' gd-ep-big' : '') + '">'
+      + '<div class="gd-ep-top">'
+      + '<span class="gd-ep-badge">第 ' + ep.seq + ' 集</span>'
+      + (ep.sub ? '<span class="gd-ep-sub">' + esc(ep.sub) + '</span>' : '')
+      + '<span class="gd-ep-date">' + esc(ep.date || '') + '</span>'
+      + (r.done ? '<span class="gd-ep-ok">✓ 已读' + (r.at ? ' · ' + esc(String(r.at).slice(0, 10)) : '') + '</span>' : '')
+      + '</div>'
+      + '<h2 class="gd-ep-title">' + esc(ep.title) + '</h2>'
+      + '<div class="gd-ep-meta">' + esc(ep.source || '') + ' · 约 ' + (ep.words || 0) + ' 字 · 读约 5 分钟</div>'
+      + (ep.hook ? '<div class="gd-hook">' + mdInline(ep.hook) + '</div>' : '')
+      + gdNodeHint(arc, ep)
+      + (pts ? '<div class="gd-points"><div class="gd-points-t">本集要点</div><ol>' + pts + '</ol></div>' : '')
+      + '<details class="gd-body-wrap"' + openAttr + '>'
+      + '<summary>📖 ' + (big ? '全文' : '展开重读全文') + '（约 ' + (ep.words || 0) + ' 字）</summary>'
+      + '<div class="gd-body">' + mdLite(ep.body) + '</div>'
+      + '</details>'
+      + (ep.next ? '<div class="gd-next">⏭ <b>下一集</b>：' + mdInline(ep.next) + '</div>' : '')
+      + '<div class="gd-actions">'
+      + '<button class="btn ' + (r.done ? '' : 'primary') + ' sm" data-action="growth-toggle" data-id="' + key + '">'
+      + (r.done ? '↺ 取消已读' : '✓ 读完了，打卡') + '</button>'
+      + '</div>'
+      + '<form data-form="growth-output" data-id="' + key + '" class="gd-out">'
+      + '<label>留一点痕迹（一句话、一个感受、一个疑问，都行）</label>'
+      + '<textarea name="out" rows="2" placeholder="比如：原来「豁达」不是天生的，是先怕过之后才长出来的。">' + esc(r.out || '') + '</textarea>'
+      + '<div class="row" style="margin-top:6px"><button class="btn sm">💾 保存痕迹</button>'
+      + (r.out && r.outAt ? '<span class="gd-out-at">上次保存 ' + esc(String(r.outAt).slice(0, 16).replace('T', ' ')) + '</span>' : '')
+      + '</div></form>'
+      + '</div>';
+  }
+  function renderGrowth() {
+    const g = G();
+    if (!g) {
+      return '<div class="card"><h2>📜 格局线</h2><div class="note">内容文件 <b>js/growth.js</b> 没加载进来。先刷新一下页面；如果还不行，就是站点包里漏了这个文件。</div></div>';
+    }
+    const s = S();
+    const rec = (s.growth && s.growth.records) || {};
+    const arcs = g.arcs || [];
+    const mainArc = arcs.filter(function (a) { return a.season === 1; })[0] || arcs[0];
+    const sideArcs = arcs.filter(function (a) { return a !== mainArc; });
+    const allEps = [];
+    arcs.forEach(function (a) { gdArcEps(a).forEach(function (e) { allEps.push({ arc: a, ep: e, key: gdKey(a.key, e.seq) }); }); });
+    const readN = allEps.filter(function (x) { return rec[x.key] && rec[x.key].done; }).length;
+    const totalN = allEps.length;
+    const streak = gdStreak();
+
+    const hero = '<div class="card gd-hero">'
+      + '<div class="gd-hero-head"><h2>📜 格局线 · 每日一集</h2><span class="gd-hero-tag">读到就赢</span></div>'
+      + '<div class="note">用「量」不用「期」：每天 <b>1 集 · 约 1200–1500 字</b>（读 5 分钟）。读完点一下就算达标——<b>没有「欠账」这回事</b>。状态好的日子可以连读两集，但最低标准永远只有一集。</div>'
+      + '<div class="gd-stats">'
+      + '<div class="gd-stat"><b>' + readN + '</b><span>已读</span></div>'
+      + '<div class="gd-stat"><b>' + totalN + '</b><span>已更新</span></div>'
+      + '<div class="gd-stat"><b>' + streak + '</b><span>连续天数</span></div>'
+      + '</div></div>';
+
+    // ---- 人物线 ----
+    let mainHtml = '';
+    if (mainArc) {
+      const eps = gdArcEps(mainArc);
+      const readSeqs = gdReadSeqs(mainArc, rec);
+      const curEp = eps.filter(function (e) { return !(rec[gdKey(mainArc.key, e.seq)] && rec[gdKey(mainArc.key, e.seq)].done); })[0] || eps[eps.length - 1];
+      const allDone = readSeqs.length >= eps.length;
+
+      const tlCard = (mainArc.timeline && mainArc.timeline.length) ? '<div class="card">'
+        + '<div class="gd-arc-head"><span class="gd-arc-ico">' + mainArc.ico + '</span>'
+        + '<span class="gd-arc-name">' + esc(mainArc.name) + ' 的一生</span>'
+        + '<span class="gd-arc-theme">第一季 · ' + esc(mainArc.theme) + '</span>'
+        + '<span class="gd-arc-prog">已读 ' + readSeqs.length + ' / ' + eps.length + ' 集</span></div>'
+        + '<div class="note">这条链是<b>一条命</b>：' + esc(mainArc.timeline[0].y) + ' → ' + esc(mainArc.timeline[mainArc.timeline.length - 1].y) + '。'
+        + '每读完一集，对应的节点就会点亮。你随时能知道自己读到哪一步了。</div>'
+        + gdTimelineHtml(mainArc, rec)
+        + (readSeqs.length ? '<div class="gd-tl-hint">🔴 <b>你在这里</b>：' + esc((function () { const mx = Math.max.apply(null, readSeqs); const node = mainArc.timeline.filter(function (x) { return x.ep && x.ep <= mx; }).pop(); return node ? node.y + ' ' + node.t : ''; })()) + '</div>'
+          : '<div class="gd-tl-hint">链条还是灰的——读完第 1 集，最左边两个节点就会亮起来 🌱</div>')
+        + gdNodeListHtml(mainArc, rec)
+        + '</div>' : '';
+
+      const todayCard = '<div class="gd-today-label">' + (allDone ? '🎉 这一季读完了' : '今日一集') + '</div>' + gdEpisodeCard(mainArc, curEp, { big: true });
+
+      const listRows = eps.map(function (e) {
+        const k = gdKey(mainArc.key, e.seq);
+        const r = gdRec(k);
+        const isOpen = !!ui.gdOpen[k];
+        return '<div class="gd-row' + (r.done ? ' done' : '') + '">'
+          + '<div class="gd-row-line">'
+          + '<span class="gd-row-no">' + e.seq + '</span>'
+          + '<span class="gd-row-t">' + esc(e.title) + '</span>'
+          + '<span class="gd-row-d">' + esc(e.date || '') + '</span>'
+          + '<span class="gd-row-s">' + (r.done ? '✓ 已读' : '未读') + '</span>'
+          + '<button class="btn sm" data-action="growth-open" data-id="' + k + '">' + (isOpen ? '收起' : '展开') + '</button>'
+          + '</div>'
+          + (isOpen ? '<div class="gd-row-body">' + gdEpisodeCard(mainArc, e, {}) + '</div>' : '')
+          + '</div>';
+      }).join('');
+      const listCard = '<div class="card"><h2>🗂 苏轼线 · 更新总表</h2>'
+        + '<div class="note">已更新 ' + eps.length + ' 集，计划共 ' + (mainArc.total || eps.length) + ' 集。读完的会变绿，可以随时点开重读。</div>'
+        + listRows + '</div>';
+
+      mainHtml = tlCard + todayCard + listCard;
+    }
+
+    // ---- 并行线（毛选） ----
+    let sideHtml = '';
+    sideArcs.forEach(function (arc) {
+      const eps = gdArcEps(arc);
+      if (!eps.length) return;
+      const readSeqs = gdReadSeqs(arc, rec);
+      const curEp = eps.filter(function (e) { return !(rec[gdKey(arc.key, e.seq)] && rec[gdKey(arc.key, e.seq)].done); })[0] || eps[eps.length - 1];
+      sideHtml += '<div class="gd-today-label">' + arc.ico + ' 并行线 · ' + esc(arc.name) + '　<span class="gd-side-prog">已读 ' + readSeqs.length + ' / 已更新 ' + eps.length + ' 段</span></div>';
+      sideHtml += '<div class="card gd-side-intro"><div class="note">这条线<b>不是历史线，是方法论线</b>，所以不排进四季，而是从头到尾都在——每天一小段。'
+        + '它要治的是「有意识、没行动」：<b>先把「谁是我的敌人」认清楚，再谈怎么办。</b></div></div>';
+      sideHtml += gdEpisodeCard(arc, curEp, { big: true });
+    });
+
+    // ---- 我的痕迹 ----
+    const traces = [];
+    allEps.forEach(function (x) {
+      const r = rec[x.key];
+      if (r && r.out && String(r.out).trim()) traces.push({ arc: x.arc, ep: x.ep, out: r.out, at: r.outAt || '' });
+    });
+    traces.sort(function (a, b) { return String(b.at).localeCompare(String(a.at)); });
+    const traceCard = '<div class="card"><h2>✍️ 我的痕迹（' + traces.length + '）</h2>'
+      + '<div class="note">看过不一定留下东西，写下才算。这里是你所有写过的句子。</div>'
+      + (traces.length ? traces.map(function (t) {
+        return '<div class="gd-trace"><div class="gd-trace-h">' + esc(t.arc.ico + ' ' + t.arc.name + ' · 第 ' + t.ep.seq + ' 集《' + t.ep.title + '》') + (t.at ? '　<span class="gd-trace-d">' + esc(String(t.at).slice(0, 10)) + '</span>' : '') + '</div>'
+          + '<div class="gd-trace-b">' + esc(t.out) + '</div></div>';
+      }).join('') : '<div class="empty"><div class="big">✍️</div>还没有痕迹<br>读完一集，在下面那个框里写一句话就行</div>')
+      + '</div>';
+
+    return hero + mainHtml + sideHtml + traceCard;
   }
 
   function renderGoals() {
@@ -3837,6 +4069,19 @@
         const cur2 = S().camp.current;
         copyText((cur2 && cur2.summary && cur2.summary.text) || ''); break;
       }
+      /* ---------- 格局线 ---------- */
+      case 'growth-toggle': {
+        const gk = id;
+        const gr = gdRec(gk);
+        if (gr.done) { gdSave(gk, { done: false, at: '' }); render(); }
+        else { gdSave(gk, { done: true, at: T() }); render(); toast('✓ 已读打卡 · 链条点亮一格 🌱'); }
+        break;
+      }
+      case 'growth-open': {
+        ui.gdOpen[id] = !ui.gdOpen[id];
+        render();
+        break;
+      }
     }
   }
 
@@ -3845,6 +4090,14 @@
     const fd = new FormData(el);
     const get = n => (fd.get(n) || '').toString().trim();
     switch (form) {
+      case 'growth-output': {
+        const gk = el.dataset.id;
+        const txt = get('out');
+        gdSave(gk, { out: txt, outAt: txt ? fmtStamp() : '' });
+        render();
+        toast(txt ? '✍️ 痕迹已保存' : '已清空');
+        break;
+      }
       case 'add-todo': {
         const txt = (get('text') || '').trim();
         if (!txt) { toast('待办内容不能为空'); break; }
