@@ -121,7 +121,8 @@
   }
 
   // 手机（≤820px）底部导航只保留 6 个高频入口，其余收进「更多」宫格；桌面侧栏保持全量
-  const MOBILE_BOTTOM = ['overview', 'habits', 'review', 'media', 'todos', 'more'];
+  // 2026-10-09：底部导航第 4 格由「自媒体」换为「格局线」（每日必做的高频入口），自媒体降为低频进「更多」
+  const MOBILE_BOTTOM = ['overview', 'habits', 'review', 'growth', 'todos', 'more'];
   function isMobileNav() { try { return window.matchMedia && window.matchMedia('(max-width: 820px)').matches; } catch (e) { return false; } }
   function navSections() {
     if (!isMobileNav()) return SECTIONS;
@@ -185,7 +186,7 @@
   // 手机「更多」宫格：收纳低频板块（桌面侧栏仍全量直达）
   function renderMoreGrid() {
     const kept = MOBILE_BOTTOM.slice(0, 5);
-    const brief = { goals: '目标追踪 · 周计划 · 书架笔记', growth: '每日一集 · 历史人物 · 毛选', favorites: '收藏清理 · 转素材 · AI 清理', quotes: '金句收藏 · 置顶 · 配图', gratitude: '每日感恩 1–3 件小事', insight: '周报/月报 · 问答洞察', settings: '云端同步 · AI · 导入 · 备份' };
+    const brief = { goals: '目标追踪 · 周计划 · 书架笔记', growth: '每日一集 · 历史人物 · 毛选', media: '选题 · 文案 · 内容记录', favorites: '收藏清理 · 转素材 · AI 清理', quotes: '金句收藏 · 置顶 · 配图', gratitude: '每日感恩 1–3 件小事', insight: '周报/月报 · 问答洞察', settings: '云端同步 · AI · 导入 · 备份' };
     const more = SECTIONS.filter(x => !kept.includes(x.id)).map(x => `
       <div class="more-card" data-action="nav" data-sec="${x.id}">
         <div class="more-ico">${x.ico}</div>
@@ -1143,8 +1144,25 @@
       const readSeqs = gdReadSeqs(arc, rec);
       const curEp = eps.filter(function (e) { return !(rec[gdKey(arc.key, e.seq)] && rec[gdKey(arc.key, e.seq)].done); })[0] || eps[eps.length - 1];
       sideHtml += '<div class="gd-today-label">' + arc.ico + ' 并行线 · ' + esc(arc.name) + '　<span class="gd-side-prog">已读 ' + readSeqs.length + ' / 已更新 ' + eps.length + ' 段</span></div>';
-      sideHtml += '<div class="card gd-side-intro"><div class="note">这条线<b>不是历史线，是方法论线</b>，所以不排进四季，而是从头到尾都在——每天一小段。'
-        + '它要治的是「有意识、没行动」：<b>先把「谁是我的敌人」认清楚，再谈怎么办。</b></div></div>';
+      // 2026-10-09：副线也接上「刻度尺」——苏轼那条量的是一生，这条量的是「局面有多大」
+      if (arc.timeline && arc.timeline.length) {
+        const sMaxRead = readSeqs.length ? Math.max.apply(null, readSeqs) : 0;
+        const sHere = (function () { if (!sMaxRead) return ''; const nd = arc.timeline.filter(function (x) { return x.ep && x.ep <= sMaxRead; }).pop(); return nd ? nd.y + ' ' + nd.t : ''; })();
+        sideHtml += '<div class="card gd-side-tl">'
+          + '<div class="gd-arc-head"><span class="gd-arc-ico">' + arc.ico + '</span>'
+          + '<span class="gd-arc-name">' + esc(arc.name) + ' · 局面的刻度</span>'
+          + '<span class="gd-arc-theme">并行线 · ' + esc(arc.theme) + '</span></div>'
+          + '<div class="note">这条尺子量的不是年纪，是<b>局面的规模</b>：'
+          + '<b>' + esc(arc.timeline[0].t) + '</b> → <b>' + esc(arc.timeline[arc.timeline.length - 1].t) + '</b>。'
+          + '每读完一段，对应节点就点亮。你会亲眼看着一个「小」是怎么变成「大」的。</div>'
+          + gdTimelineHtml(arc, rec)
+          + (sHere ? '<div class="gd-tl-hint">🔴 <b>你在这里</b>：' + esc(sHere) + '</div>'
+            : '<div class="gd-tl-hint">尺子还是灰的——读完第 1 段，最左边两个节点就会亮起来 🌱</div>')
+          + '</div>';
+      }
+      sideHtml += '<div class="card gd-side-intro"><div class="note">这条线<b>不按《毛选》的篇目顺序，也不排进四季</b>——它跟着一个人，一年一年往下走：'
+        + '<b>先看他当时面对的是什么局面，再看他怎么判断、怎么动手。</b>每天一小段，400–500 字。'
+        + '它要治的是「有意识、没行动」：<b>先看清「谁是我的敌人」，再谈怎么办。</b></div></div>';
       sideHtml += gdEpisodeCard(arc, curEp, { big: true });
     });
 
