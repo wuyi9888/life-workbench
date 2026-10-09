@@ -1068,7 +1068,7 @@ label { font-size: 13px; color: var(--muted); font-weight: 600; display: block; 
 .gd-row.done .gd-row-no { color: #fff; background: var(--good); }
 .gd-row-t { flex: 1 1 auto; font-size: 14px; font-weight: 600; }
 .gd-row-d { font-size: 11.5px; color: var(--muted); }
-.gd-row-s { font-size: 11.5px; color: var(--muted); flex: 0 0 42px; text-align: right; }
+.gd-row-s { font-size: 11.5px; color: var(--muted); flex: 0 0 76px; text-align: right; white-space: nowrap; }
 .gd-row.done .gd-row-s { color: var(--good); font-weight: 700; }
 .gd-row-body { margin: 10px 0 4px 34px; }
 .gd-row-body .card {

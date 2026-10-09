@@ -953,6 +953,12 @@
     s.growth.records[key] = Object.assign({ done: false, at: '', out: '', outAt: '' }, s.growth.records[key] || {}, patch);
     Store.save();
   }
+  // 打卡时间：2026-10-09 起存 'YYYY-MM-DD HH:mm'（老数据只有日期，兼容显示）
+  function gdAtText(at) {
+    const v = String(at || '');
+    if (!v) return '';
+    return v.length <= 10 ? v : v.slice(0, 16).replace('T', ' ');
+  }
   // 轻量 Markdown：## 小标题 / > 引用 / - 列表 / **加粗**
   function mdInline(t) { return esc(t).replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>'); }
   function mdLite(md) {
@@ -1073,7 +1079,7 @@
       + '<span class="gd-ep-badge">第 ' + ep.seq + ' 集</span>'
       + (ep.sub ? '<span class="gd-ep-sub">' + esc(ep.sub) + '</span>' : '')
       + '<span class="gd-ep-date">' + esc(ep.date || '') + '</span>'
-      + (r.done ? '<span class="gd-ep-ok">✓ 已读' + (r.at ? ' · ' + esc(String(r.at).slice(0, 10)) : '') + '</span>' : '')
+      + (r.done ? '<span class="gd-ep-ok">✓ 已读' + (r.at ? ' · ' + esc(gdAtText(r.at)) : '') + '</span>' : '')
       + '</div>'
       + '<h2 class="gd-ep-title">' + esc(ep.title) + '</h2>'
       + '<div class="gd-ep-meta">' + esc(ep.source || '') + ' · 约 ' + (ep.words || 0) + ' 字 · 读约 5 分钟</div>'
@@ -1108,8 +1114,8 @@
         + '<div class="gd-row-line">'
         + '<span class="gd-row-no">' + e.seq + '</span>'
         + '<span class="gd-row-t">' + esc(e.title) + '</span>'
-        + '<span class="gd-row-d">' + esc(e.date || '') + '</span>'
-        + '<span class="gd-row-s">' + (r.done ? '✓ 已读' : '未读') + '</span>'
+        + '<span class="gd-row-d">' + esc(String(e.date || '').slice(5)) + '</span>'
+        + '<span class="gd-row-s">' + (r.done ? ('✓ ' + esc(gdAtText(r.at) ? gdAtText(r.at).slice(5) : '已读')) : '未读') + '</span>'
         + '<button class="btn sm" data-action="growth-open" data-id="' + k + '">' + (isOpen ? '收起' : '展开') + '</button>'
         + '</div>'
         + (isOpen ? '<div class="gd-row-body">' + gdEpisodeCard(arc, e, {}) + '</div>' : '')
@@ -1169,7 +1175,8 @@
         + '<div class="note">已更新 ' + eps.length + ' 集，计划共 ' + (mainArc.total || eps.length) + ' 集。读完的会变绿，可以随时点开重读。</div>'
         + listRows + '</div>';
 
-      mainHtml = tlCard + todayCard + listCard;
+      // 2026-10-09 调整顺序（五一要的）：一生链条 → 更新总表 → 今日一集
+      mainHtml = tlCard + listCard + todayCard;
     }
 
     // ---- 并行线（毛选） ----
@@ -1199,29 +1206,16 @@
       sideHtml += '<div class="card gd-side-intro"><div class="note">这条线<b>不按《毛选》的篇目顺序，也不排进四季</b>——它跟着一个人，一年一年往下走：'
         + '<b>先看他当时面对的是什么局面，再看他怎么判断、怎么动手。</b>每天一小段，400–500 字。'
         + '它要治的是「有意识、没行动」：<b>先看清「谁是我的敌人」，再谈怎么办。</b></div></div>';
-      sideHtml += gdEpisodeCard(arc, curEp, { big: true });
-      // 2026-10-09：并行线也给一张总表，否则读完的段落在页面上就找不回来了
+      // 2026-10-09：并行线也给一张总表（否则读完的段落找不回来），并按「刻度尺 → 总表 → 今日一段」排
       sideHtml += '<div class="card"><h2>' + arc.ico + ' ' + esc(arc.name) + '线 · 更新总表</h2>'
         + '<div class="note">已更新 ' + eps.length + ' 段，计划共 ' + (arc.total || eps.length) + ' 段。读完的会变绿，可以随时点开重读。</div>'
         + gdListRows(arc, eps) + '</div>';
+      sideHtml += gdEpisodeCard(arc, curEp, { big: true });
     });
 
-    // ---- 我的痕迹 ----
-    const traces = [];
-    allEps.forEach(function (x) {
-      const r = rec[x.key];
-      if (r && r.out && String(r.out).trim()) traces.push({ arc: x.arc, ep: x.ep, out: r.out, at: r.outAt || '' });
-    });
-    traces.sort(function (a, b) { return String(b.at).localeCompare(String(a.at)); });
-    const traceCard = '<div class="card"><h2>✍️ 我的痕迹（' + traces.length + '）</h2>'
-      + '<div class="note">看过不一定留下东西，写下才算。这里是你所有写过的句子。</div>'
-      + (traces.length ? traces.map(function (t) {
-        return '<div class="gd-trace"><div class="gd-trace-h">' + esc(t.arc.ico + ' ' + t.arc.name + ' · 第 ' + t.ep.seq + ' 集《' + t.ep.title + '》') + (t.at ? '　<span class="gd-trace-d">' + esc(String(t.at).slice(0, 10)) + '</span>' : '') + '</div>'
-          + '<div class="gd-trace-b">' + esc(t.out) + '</div></div>';
-      }).join('') : '<div class="empty"><div class="big">✍️</div>还没有痕迹<br>读完一集，在下面那个框里写一句话就行</div>')
-      + '</div>';
-
-    return hero + mainHtml + sideHtml + traceCard;
+    // ---- 我的痕迹（2026-10-09 起不再单列）：痕迹就在每张集的卡片里「留一点痕迹」下方，
+    //      留在页面最底部会离当天那集太远——五一要求去掉这块独立卡片。
+    return hero + mainHtml + sideHtml;
   }
 
   function renderGoals() {
@@ -4132,7 +4126,7 @@
         const gk = id;
         const gr = gdRec(gk);
         if (gr.done) { gdSave(gk, { done: false, at: '' }); render(); }
-        else { gdSave(gk, { done: true, at: T() }); render(); toast('✓ 已读打卡 · 链条点亮一格 🌱'); }
+        else { gdSave(gk, { done: true, at: fmtStamp() }); render(); toast('✓ 已读打卡 · 链条点亮一格 🌱'); }
         break;
       }
       case 'growth-open': {
