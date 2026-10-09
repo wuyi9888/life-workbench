@@ -1091,3 +1091,26 @@ label { font-size: 13px; color: var(--muted); font-weight: 600; display: block; 
   .gd-row-body { margin-left: 0; }
   .gd-stat b { font-size: 19px; }
 }
+
+/* ---- 2026-10-09：今日完成面板 ----
+   当天那一集读完，大卡片就收起来，换成这块「今天完成」——
+   不把下一集顶到眼前，避免「今天做完了、明天还有要做的」那种不放松感。 */
+.gd-today-label.done { color: var(--good); }
+.gd-done-card {
+  border-left: 3px solid var(--good);
+  background: linear-gradient(180deg, rgba(34,197,94,.06), transparent 70%);
+}
+.gd-done-line { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.gd-done-ok { font-size: 13.5px; font-weight: 800; color: var(--good); }
+.gd-done-at { font-size: 12px; color: var(--muted); }
+.gd-done-ep { font-size: 13px; font-weight: 600; color: var(--text); }
+.gd-done-next { font-size: 12px; color: var(--muted); margin-left: 8px; align-self: center; }
+.gd-row-s.later { color: var(--muted); opacity: .72; font-weight: 600; }
+[data-theme="dark"] .gd-done-card { background: linear-gradient(180deg, rgba(34,197,94,.10), transparent 70%); }
+
+@media (max-width: 820px) {
+  .gd-done-line { gap: 6px; }
+  .gd-done-next { margin-left: 0; flex: 1 1 100%; }
+}
+.gd-done-card .row { flex-wrap: nowrap; align-items: center; }
+.gd-done-card .row > * { flex: 0 0 auto; min-width: 0; }

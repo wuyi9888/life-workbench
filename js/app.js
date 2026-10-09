@@ -108,7 +108,7 @@
   const TITLES = { overview: '今日 · 寄语', goals: '主题阅读营', growth: '格局线 · 每日一集', favorites: '收藏夹清理', quotes: '语录整理', gratitude: '感恩日记', wishlist: '愿望清单', review: '复盘 · 随笔 · 体检', insight: '洞察 · 周报/月报', habits: '生活打卡 · 秩序', media: '自媒体 · 内容', todos: '待办清单', settings: '设置 · 数据', more: '全部板块' };
 
   let current = 'overview';
-  const ui = { week: Store.isoWeek(), favFilter: 'pending', reviewTab: 'list', quoteFilter: 'all', quoteExpanded: null, quoteEditing: null, shelfView: 'covers', shelfExpanded: null, insightType: 'week', insightExpanded: null, mediaTab: 'idea', posOpen: false, onlineQuote: null, catOpen: {}, quoteLoading: false, quoteFailed: false, apiConfigOpen: false, coachSessions: {}, syncStatusText: '同步未开始', todoFilter: 'all', campBookOpen: null, campHistoryOpen: false, journalEdit: null, gdOpen: {}, gdArc: '' };
+  const ui = { week: Store.isoWeek(), favFilter: 'pending', reviewTab: 'list', quoteFilter: 'all', quoteExpanded: null, quoteEditing: null, shelfView: 'covers', shelfExpanded: null, insightType: 'week', insightExpanded: null, mediaTab: 'idea', posOpen: false, onlineQuote: null, catOpen: {}, quoteLoading: false, quoteFailed: false, apiConfigOpen: false, coachSessions: {}, syncStatusText: '同步未开始', todoFilter: 'all', campBookOpen: null, campHistoryOpen: false, journalEdit: null, gdOpen: {}, gdRedo: {}, gdArc: '' };
 
   // 图片字段解析：'img://img_xxx' 引用 → IndexedDB dataURL；旧 dataURL 原样返回
   function resolveImg(v) {
@@ -1115,13 +1115,78 @@
         + '<span class="gd-row-no">' + e.seq + '</span>'
         + '<span class="gd-row-t">' + esc(e.title) + '</span>'
         + '<span class="gd-row-d">' + esc(String(e.date || '').slice(5)) + '</span>'
-        + '<span class="gd-row-s">' + (r.done ? ('✓ ' + esc(gdAtText(r.at) ? gdAtText(r.at).slice(5) : '已读')) : '未读') + '</span>'
+        + '<span class="gd-row-s' + (!r.done && e.date && e.date > T() ? ' later' : '') + '">'
+        + (r.done ? ('✓ ' + esc(gdAtText(r.at) ? gdAtText(r.at).slice(5) : '已读'))
+          : (e.date && e.date > T() ? '备着' : '未读')) + '</span>'
         + '<button class="btn sm" data-action="growth-open" data-id="' + k + '">' + (isOpen ? '收起' : '展开') + '</button>'
         + '</div>'
         + (isOpen ? '<div class="gd-row-body">' + gdEpisodeCard(arc, e, {}) + '</div>' : '')
         + '</div>';
     }).join('');
   }
+  /* ---- 2026-10-09：「今日」对准当天 ----
+   * 五一的原话：一天一集最容易坚持，像把「今日待办」清零；
+   * 但已经写好的下一集摆在页面上，就有「今天做完了、明天还有要做的」那种不放松感。
+   * 所以：大卡片只放「当天该读的那一集」，读完就换成一块「今天完成」面板，
+   * 绝不把下一集顶上来。（总表里仍然都能点开——想提前读不受影响，什么都没锁）
+   */
+  function gdIsDone(arc, rec, e) {
+    const r = rec[gdKey(arc.key, e.seq)];
+    return !!(r && r.done);
+  }
+  // 找出「今天该读的那一集」
+  function gdDueEp(arc, rec) {
+    const eps = gdArcEps(arc);
+    if (!eps.length) return null;
+    const today = T();
+    const todayEps = eps.filter(function (e) { return e.date === today; });
+    if (todayEps.length) return todayEps[0];
+    // 今天没排集（或那天漏读了）：补最近一集已到期的
+    const overdue = eps.filter(function (e) { return e.date && e.date < today && !gdIsDone(arc, rec, e); })[0];
+    if (overdue) return overdue;
+    const released = eps.filter(function (e) { return !e.date || e.date <= today; });
+    return released[released.length - 1] || eps[0];
+  }
+  function gdNextEp(arc, ep) {
+    return gdArcEps(arc).filter(function (e) { return e.seq > ep.seq; })[0] || null;
+  }
+  // 今日槽位（unit = 量词：人物线「集」/ 毛线「段」）
+  function gdTodaySlot(arc, rec, unit, label) {
+    const ep = gdDueEp(arc, rec);
+    if (!ep) return '';
+    const today = T();
+    const key = gdKey(arc.key, ep.seq);
+    const r = gdRec(key);
+    const next = gdNextEp(arc, ep);
+    // 到期的都读完了（不管今天有没有排集）→ 显示完成面板
+    const hasPending = gdArcEps(arc).some(function (e) {
+      return (!e.date || e.date <= today) && !gdIsDone(arc, rec, e);
+    });
+    if (r.done && (ep.date === today || !hasPending)) {
+      const openK = !!ui.gdRedo[key];
+      const tomorrow = Store.addDays(today, 1);
+      const lab = next ? (ep.date === today ? '✅ 今天这' + unit + '读完了 · 明天见' : '✅ 这一' + unit + '读完了') : '🎉 已更新的都读完了';
+      const tail = !next ? '🎉 追上进度了' : (next.date === tomorrow ? '明天见 🌙' : '下次见 🌙');
+      return '<div class="gd-today-label done">' + lab + '</div>'
+        + '<div class="card gd-done-card">'
+        + '<div class="gd-done-line">'
+        + '<span class="gd-done-ok">✓ ' + (ep.date === today ? '今日打卡完成' : '已打卡') + '</span>'
+        + (r.at ? '<span class="gd-done-at">' + esc(gdAtText(r.at)) + '</span>' : '')
+        + '<span class="gd-done-ep">第 ' + ep.seq + ' ' + unit + '《' + esc(ep.title) + '》</span>'
+        + '</div>'
+        + '<div class="note">今天的量就这些，已经清零了 🌙'
+        + (next ? '下一' + unit + '（<b>' + esc(String(next.date || '').slice(5)) + '</b>）到时候会自己出现在这个位置——<b>不用记，也不用提前做</b>。' : '已更新的都读完了，后面的等你哪天说「有空」我再写。')
+        + '想多读就往下翻总表，不想读就明天见。</div>'
+        + '<div class="row" style="margin-top:8px">'
+        + '<button class="btn sm" data-action="growth-redo" data-id="' + key + '">' + (openK ? '收起' : '↺ 重读这' + unit) + '</button>'
+        + '<span class="gd-done-next">' + tail + '</span>'
+        + '</div>'
+        + (openK ? '<div class="gd-row-body">' + gdEpisodeCard(arc, ep, {}) + '</div>' : '')
+        + '</div>';
+    }
+    return '<div class="gd-today-label">' + (label || '今日一集') + '</div>' + gdEpisodeCard(arc, ep, { big: true });
+  }
+
   function renderGrowth() {
     const g = G();
     if (!g) {
@@ -1152,8 +1217,6 @@
     if (mainArc) {
       const eps = gdArcEps(mainArc);
       const readSeqs = gdReadSeqs(mainArc, rec);
-      const curEp = eps.filter(function (e) { return !(rec[gdKey(mainArc.key, e.seq)] && rec[gdKey(mainArc.key, e.seq)].done); })[0] || eps[eps.length - 1];
-      const allDone = readSeqs.length >= eps.length;
 
       const tlCard = (mainArc.timeline && mainArc.timeline.length) ? '<div class="card">'
         + '<div class="gd-arc-head"><span class="gd-arc-ico">' + mainArc.ico + '</span>'
@@ -1168,11 +1231,12 @@
         + gdNodeListHtml(mainArc, rec)
         + '</div>' : '';
 
-      const todayCard = '<div class="gd-today-label">' + (allDone ? '🎉 这一季读完了' : '今日一集') + '</div>' + gdEpisodeCard(mainArc, curEp, { big: true });
+      // 2026-10-09：今日槽位交给 gdTodaySlot —— 当天读完就显示完成面板，不顶下一集上来
+      const todayCard = gdTodaySlot(mainArc, rec, '集', '今日一集');
 
       const listRows = gdListRows(mainArc, eps);
       const listCard = '<div class="card"><h2>🗂 苏轼线 · 更新总表</h2>'
-        + '<div class="note">已更新 ' + eps.length + ' 集，计划共 ' + (mainArc.total || eps.length) + ' 集。读完的会变绿，可以随时点开重读。</div>'
+        + '<div class="note">已更新 ' + eps.length + ' 集，计划共 ' + (mainArc.total || eps.length) + ' 集。读完的会变绿，可以随时点开重读——<b>没到日子的标「备着」，不算欠账</b>。</div>'
         + listRows + '</div>';
 
       // 2026-10-09 调整顺序（五一要的）：一生链条 → 更新总表 → 今日一集
@@ -1185,7 +1249,6 @@
       const eps = gdArcEps(arc);
       if (!eps.length) return;
       const readSeqs = gdReadSeqs(arc, rec);
-      const curEp = eps.filter(function (e) { return !(rec[gdKey(arc.key, e.seq)] && rec[gdKey(arc.key, e.seq)].done); })[0] || eps[eps.length - 1];
       sideHtml += '<div class="gd-today-label">' + arc.ico + ' 并行线 · ' + esc(arc.name) + '　<span class="gd-side-prog">已读 ' + readSeqs.length + ' / 已更新 ' + eps.length + ' 段</span></div>';
       // 2026-10-09：副线也接上「刻度尺」——苏轼那条量的是一生，这条量的是「局面有多大」
       if (arc.timeline && arc.timeline.length) {
@@ -1208,9 +1271,9 @@
         + '它要治的是「有意识、没行动」：<b>先看清「谁是我的敌人」，再谈怎么办。</b></div></div>';
       // 2026-10-09：并行线也给一张总表（否则读完的段落找不回来），并按「刻度尺 → 总表 → 今日一段」排
       sideHtml += '<div class="card"><h2>' + arc.ico + ' ' + esc(arc.name) + '线 · 更新总表</h2>'
-        + '<div class="note">已更新 ' + eps.length + ' 段，计划共 ' + (arc.total || eps.length) + ' 段。读完的会变绿，可以随时点开重读。</div>'
+        + '<div class="note">已更新 ' + eps.length + ' 段，计划共 ' + (arc.total || eps.length) + ' 段。读完的会变绿，可以随时点开重读——<b>没到日子的标「备着」，不算欠账</b>。</div>'
         + gdListRows(arc, eps) + '</div>';
-      sideHtml += gdEpisodeCard(arc, curEp, { big: true });
+      sideHtml += gdTodaySlot(arc, rec, '段', '今日一段');
     });
 
     // ---- 我的痕迹（2026-10-09 起不再单列）：痕迹就在每张集的卡片里「留一点痕迹」下方，
@@ -4131,6 +4194,12 @@
       }
       case 'growth-open': {
         ui.gdOpen[id] = !ui.gdOpen[id];
+        render();
+        break;
+      }
+      case 'growth-redo': {
+        // 「今天完成」面板里的「重读这一集」——用独立的开关，免得和总表那张一起展开
+        ui.gdRedo[id] = !ui.gdRedo[id];
         render();
         break;
       }
