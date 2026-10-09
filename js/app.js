@@ -1030,6 +1030,23 @@
     const txt = picked.map(function (n) { return n.y + ' ' + n.t; }).join('　→　');
     return '<div class="gd-node-hint">📍 这一集落在链条的这个位置：<b>' + esc(txt) + '</b></div>';
   }
+  // 这一集的作品（2026-10-09 加：五一要「人物 + 他的作品」，她是语文老师，顺带标出课本坐标）
+  function gdWorksHtml(ep) {
+    const ws = (ep && ep.works) || [];
+    if (!ws.length) return '';
+    const items = ws.map(function (w) {
+      return '<div class="gd-work">'
+        + '<div class="gd-work-head">'
+        + '<span class="gd-work-t">' + esc(w.title) + '</span>'
+        + (w.tag ? '<span class="gd-work-tag">' + esc(w.tag) + '</span>' : '')
+        + (w.when ? '<span class="gd-work-when">' + esc(w.when) + '</span>' : '')
+        + '</div>'
+        + (w.text ? '<div class="gd-work-text">' + esc(w.text) + '</div>' : '')
+        + (w.note ? '<div class="gd-work-note">' + mdInline(w.note) + '</div>' : '')
+        + '</div>';
+    }).join('');
+    return '<div class="gd-works"><div class="gd-works-t">🖋 他这一集的作品</div>' + items + '</div>';
+  }
   function gdEpisodeCard(arc, ep, opts) {
     opts = opts || {};
     const key = gdKey(arc.key, ep.seq);
@@ -1049,6 +1066,7 @@
       + (ep.hook ? '<div class="gd-hook">' + mdInline(ep.hook) + '</div>' : '')
       + gdNodeHint(arc, ep)
       + (pts ? '<div class="gd-points"><div class="gd-points-t">本集要点</div><ol>' + pts + '</ol></div>' : '')
+      + gdWorksHtml(ep)
       + '<details class="gd-body-wrap"' + openAttr + '>'
       + '<summary>📖 ' + (big ? '全文' : '展开重读全文') + '（约 ' + (ep.words || 0) + ' 字）</summary>'
       + '<div class="gd-body">' + mdLite(ep.body) + '</div>'
