@@ -1165,8 +1165,8 @@
     if (r.done && (ep.date === today || !hasPending)) {
       const openK = !!ui.gdRedo[key];
       const tomorrow = Store.addDays(today, 1);
-      const lab = next ? (ep.date === today ? '✅ 今天这' + unit + '读完了 · 明天见' : '✅ 这一' + unit + '读完了') : '🎉 已更新的都读完了';
-      const tail = !next ? '🎉 追上进度了' : (next.date === tomorrow ? '明天见 🌙' : '下次见 🌙');
+      const lab = next ? (ep.date === today ? '✅ 今天这' + unit + '读完了 · 明天见' : '✅ 这一' + unit + '读完了') : '✅ 今天读完了 · 明早自动续上';
+      const tail = !next ? '等下一季开场 🌙' : (next.date === tomorrow ? '明早见 🌙' : '下次见 🌙');
       return '<div class="gd-today-label done">' + lab + '</div>'
         + '<div class="card gd-done-card">'
         + '<div class="gd-done-line">'
@@ -1175,7 +1175,7 @@
         + '<span class="gd-done-ep">第 ' + ep.seq + ' ' + unit + '《' + esc(ep.title) + '》</span>'
         + '</div>'
         + '<div class="note">今天的量就这些，已经清零了 🌙'
-        + (next ? '下一' + unit + '（<b>' + esc(String(next.date || '').slice(5)) + '</b>）到时候会自己出现在这个位置——<b>不用记，也不用提前做</b>。' : '已更新的都读完了，后面的等你哪天说「有空」我再写。')
+        + (next ? '下一' + unit + '（<b>' + esc(String(next.date || '').slice(5)) + '</b>）到时候会自己出现在这个位置——<b>不用记，也不用提前做</b>。' : '库里确实见底了——<b>明天清晨会自己补上一' + unit + '</b>，你不用来催我，也不用管这件事。')
         + '想多读就往下翻总表，不想读就明天见。</div>'
         + '<div class="row" style="margin-top:8px">'
         + '<button class="btn sm" data-action="growth-redo" data-id="' + key + '">' + (openK ? '收起' : '↺ 重读这' + unit) + '</button>'
@@ -1205,7 +1205,7 @@
 
     const hero = '<div class="card gd-hero">'
       + '<div class="gd-hero-head"><h2>📜 格局线 · 每日一集</h2><span class="gd-hero-tag">读到就赢</span></div>'
-      + '<div class="note">用「量」不用「期」：每天 <b>1 集 · 约 1200–1500 字</b>（读 5 分钟）。读完点一下就算达标——<b>没有「欠账」这回事</b>。状态好的日子可以连读两集，但最低标准永远只有一集。</div>'
+      + '<div class="note">用「量」不用「期」：每天 <b>1 集 · 约 1200–1500 字</b>（读 5 分钟）。读完点一下就算达标——<b>没有「欠账」这回事</b>。状态好的日子可以连读两集，但最低标准永远只有一集。<br>库存是<b>自动续的</b>：每天清晨会检查一遍，缺了就补上当天的量——<b>你不用来催，也不用提前做</b>。</div>'
       + '<div class="gd-stats">'
       + '<div class="gd-stat"><b>' + readN + '</b><span>已读</span></div>'
       + '<div class="gd-stat"><b>' + totalN + '</b><span>已更新</span></div>'
