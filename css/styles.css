@@ -1034,6 +1034,25 @@ label { font-size: 13px; color: var(--muted); font-weight: 600; display: block; 
 }
 .gd-work-note { font-size: 13px; line-height: 1.7; color: var(--muted); margin-top: 8px; }
 .gd-work-note strong { color: var(--text); }
+.gd-works-hint { font-weight: 400; color: var(--muted); opacity: .8; }
+.gd-works-more { margin-top: 10px; border-top: 1px dashed var(--border); padding-top: 8px; }
+.gd-works-more-t { font-size: 12px; font-weight: 700; color: var(--muted); margin-bottom: 4px; }
+.gd-works-more ul { list-style: none; margin: 0; padding: 0; }
+.gd-works-more li {
+  padding: 5px 0 5px 14px; position: relative;
+  font-size: 13px; line-height: 1.65; color: var(--muted);
+}
+.gd-works-more li::before {
+  content: '·'; position: absolute; left: 3px; top: 4px;
+  color: var(--primary); font-weight: 700;
+}
+.gd-more-t { color: var(--text); font-weight: 600; }
+.gd-more-tag {
+  font-size: 11px; color: var(--primary); background: var(--primary-soft);
+  border-radius: 999px; padding: 1px 7px; margin: 0 6px; white-space: nowrap;
+}
+.gd-more-why { display: block; margin-top: 2px; }
+.gd-more-why strong { color: var(--text); }
 .gd-out label { display: block; font-size: 12.5px; color: var(--muted); margin-bottom: 6px; }
 .gd-out textarea { width: 100%; resize: vertical; }
 .gd-out-at { font-size: 11.5px; color: var(--muted); margin-left: 10px; }

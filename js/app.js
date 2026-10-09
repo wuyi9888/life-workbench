@@ -1033,7 +1033,8 @@
   // 这一集的作品（2026-10-09 加：五一要「人物 + 他的作品」，她是语文老师，顺带标出课本坐标）
   function gdWorksHtml(ep) {
     const ws = (ep && ep.works) || [];
-    if (!ws.length) return '';
+    const more = (ep && ep.more) || [];
+    if (!ws.length && !more.length) return '';
     const items = ws.map(function (w) {
       return '<div class="gd-work">'
         + '<div class="gd-work-head">'
@@ -1045,7 +1046,20 @@
         + (w.note ? '<div class="gd-work-note">' + mdInline(w.note) + '</div>' : '')
         + '</div>';
     }).join('');
-    return '<div class="gd-works"><div class="gd-works-t">🖋 他这一集的作品</div>' + items + '</div>';
+    // 2026-10-09 加：顺带还能读的（只给名字+一句为什么，不占篇幅）
+    const moreHtml = more.length
+      ? '<div class="gd-works-more"><div class="gd-works-more-t">🔖 这一集顺带还能读的</div><ul>'
+        + more.map(function (m) {
+          return '<li><span class="gd-more-t">' + esc(m.title) + '</span>'
+            + (m.tag ? '<span class="gd-more-tag">' + esc(m.tag) + '</span>' : '')
+            + (m.why ? '<span class="gd-more-why">' + mdInline(m.why) + '</span>' : '')
+            + '</li>';
+        }).join('')
+        + '</ul></div>'
+      : '';
+    return '<div class="gd-works"><div class="gd-works-t">🖋 他这一集的作品'
+      + '<span class="gd-works-hint">（教材里的 · 教材外的，都放一点）</span></div>'
+      + items + moreHtml + '</div>';
   }
   function gdEpisodeCard(arc, ep, opts) {
     opts = opts || {};
@@ -1083,6 +1097,24 @@
       + (r.out && r.outAt ? '<span class="gd-out-at">上次保存 ' + esc(String(r.outAt).slice(0, 16).replace('T', ' ')) + '</span>' : '')
       + '</div></form>'
       + '</div>';
+  }
+  // 「更新总表」每一行（可展开重读）——人物线与并行线共用（2026-10-09 抽出，给毛线也接上）
+  function gdListRows(arc, eps) {
+    return eps.map(function (e) {
+      const k = gdKey(arc.key, e.seq);
+      const r = gdRec(k);
+      const isOpen = !!ui.gdOpen[k];
+      return '<div class="gd-row' + (r.done ? ' done' : '') + '">'
+        + '<div class="gd-row-line">'
+        + '<span class="gd-row-no">' + e.seq + '</span>'
+        + '<span class="gd-row-t">' + esc(e.title) + '</span>'
+        + '<span class="gd-row-d">' + esc(e.date || '') + '</span>'
+        + '<span class="gd-row-s">' + (r.done ? '✓ 已读' : '未读') + '</span>'
+        + '<button class="btn sm" data-action="growth-open" data-id="' + k + '">' + (isOpen ? '收起' : '展开') + '</button>'
+        + '</div>'
+        + (isOpen ? '<div class="gd-row-body">' + gdEpisodeCard(arc, e, {}) + '</div>' : '')
+        + '</div>';
+    }).join('');
   }
   function renderGrowth() {
     const g = G();
@@ -1132,21 +1164,7 @@
 
       const todayCard = '<div class="gd-today-label">' + (allDone ? '🎉 这一季读完了' : '今日一集') + '</div>' + gdEpisodeCard(mainArc, curEp, { big: true });
 
-      const listRows = eps.map(function (e) {
-        const k = gdKey(mainArc.key, e.seq);
-        const r = gdRec(k);
-        const isOpen = !!ui.gdOpen[k];
-        return '<div class="gd-row' + (r.done ? ' done' : '') + '">'
-          + '<div class="gd-row-line">'
-          + '<span class="gd-row-no">' + e.seq + '</span>'
-          + '<span class="gd-row-t">' + esc(e.title) + '</span>'
-          + '<span class="gd-row-d">' + esc(e.date || '') + '</span>'
-          + '<span class="gd-row-s">' + (r.done ? '✓ 已读' : '未读') + '</span>'
-          + '<button class="btn sm" data-action="growth-open" data-id="' + k + '">' + (isOpen ? '收起' : '展开') + '</button>'
-          + '</div>'
-          + (isOpen ? '<div class="gd-row-body">' + gdEpisodeCard(mainArc, e, {}) + '</div>' : '')
-          + '</div>';
-      }).join('');
+      const listRows = gdListRows(mainArc, eps);
       const listCard = '<div class="card"><h2>🗂 苏轼线 · 更新总表</h2>'
         + '<div class="note">已更新 ' + eps.length + ' 集，计划共 ' + (mainArc.total || eps.length) + ' 集。读完的会变绿，可以随时点开重读。</div>'
         + listRows + '</div>';
@@ -1182,6 +1200,10 @@
         + '<b>先看他当时面对的是什么局面，再看他怎么判断、怎么动手。</b>每天一小段，400–500 字。'
         + '它要治的是「有意识、没行动」：<b>先看清「谁是我的敌人」，再谈怎么办。</b></div></div>';
       sideHtml += gdEpisodeCard(arc, curEp, { big: true });
+      // 2026-10-09：并行线也给一张总表，否则读完的段落在页面上就找不回来了
+      sideHtml += '<div class="card"><h2>' + arc.ico + ' ' + esc(arc.name) + '线 · 更新总表</h2>'
+        + '<div class="note">已更新 ' + eps.length + ' 段，计划共 ' + (arc.total || eps.length) + ' 段。读完的会变绿，可以随时点开重读。</div>'
+        + gdListRows(arc, eps) + '</div>';
     });
 
     // ---- 我的痕迹 ----
