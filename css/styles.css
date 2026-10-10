@@ -69,12 +69,20 @@ body {
      真正管用的是「图片整体小一点」：图越小，可右移的余量越大，字反而落得越右。
      算下来图片宽 = 107.83vw 时，字右端刚好贴住视口右缘（再多就切字了）。
      · size 三档取最大：100vw（宽度铺满）、141.5vh（高度铺满，防上下露底）、min(184.99vh, 107.83vw)（主体区完整的上限）
-     · position 15%：图片尽量右移（越大越左）
-     想「字再往右/图再大」就调 107.83vw 这个数：调小＝字更右但图更小。 */
+     2026-10-10 四次校准（她反馈「刷新后没看出变化」）—— 查证：三次校准只把字从 95.6% 挪到 98.8%，
+     差 3%，肉眼确实看不出来。根因是「字右端」有硬上限 100%（贴住屏幕右缘，再多就切笔画）：
+       字右端 = 图宽 x 0.9274（题字原图右边界 1417/1528），所以要贴边就必须 图宽 = 107.83vw。
+     于是改用「两项互保」的写法，去掉原来那串 min/max 里会互相抵消的部分：
+       · 107.83vw = 字右端恰好贴住屏幕右缘的图宽（横向：保证字在最右且不切）
+       · 141.5vh  = 图高恰好铺满视口高的图宽（纵向：保证上下不露底色）
+       max() 取大者 → 两个目标同时满足；视口比 1.312（=1.0783/0.7623）宽时由 107.83vw 生效，
+       更方时由 141.5vh 生效（此时字会略超出右缘一点点，优先不露底色）。
+     · position 0% 43%：0% = 图左缘贴视口左缘，让图右侧那圈留白全部溢出屏幕，字才落到最右。
+     改「字的位置」调 position 第一个数（0% 最右，100% 最左）；改「图的大小」调 107.83vw。 */
   background-image: url('../img/bg-warm.jpg');
   background-color: var(--bg);
-  background-position: 15% 43%;
-  background-size: max(100vw, 141.5vh, min(184.99vh, 107.83vw)) auto;
+  background-position: 0% 43%;
+  background-size: max(107.83vw, 141.5vh) auto;
   background-repeat: no-repeat;
   background-attachment: fixed;
   color: var(--text);
@@ -381,10 +389,10 @@ label { font-size: 13px; color: var(--muted); font-weight: 600; display: block; 
 /* ---------- 手机适配 ---------- */
 @media (max-width: 820px) {
   .sidebar { display: none; }
-  /* 窄屏：竖屏比这张横构图窄太多，主体区（宽占图 84%）横过来放不下，只能保证纵向完整——
-     所以固定用 cover（铺满），再把横向位置挪到 72%：原题字就在图片右上角，
-     这个值在竖屏(0.46)到方屏(1.0)的各档里都把题字送到屏幕约 71~75% 处（横屏窄窗口下 cover 无余量、此值不生效）。 */
-  body { background-position: 72% center; background-size: cover; }
+  /* 窄屏（≤820px）默认档（竖屏 / 方屏）：横图在竖屏下横向必然大裁，原来用的 cover 会让图宽
+     = 视口高 x 1.41，题字（长在图右上角）直接被甩出屏幕外。
+     改用「图高铺满 + 右对齐」：141.5vh 保证上下不露底色，100% 把题字拉回屏幕内。 */
+  body { background-position: 100% center; background-size: max(100vw, 141.5vh) auto; }
   .main { padding-bottom: 72px; }
   .topbar { padding: 12px 16px; }
   .view { padding: 16px; }
@@ -404,6 +412,15 @@ label { font-size: 13px; color: var(--muted); font-weight: 600; display: block; 
   .bottomnav .nav-item.active { box-shadow: none; }
   .bottomnav .nav-item .ico { font-size: 18px; }
   .bottomnav .nav-item .label { font-size: 10px; }
+}
+
+/* ★窄屏里「横着的窗口」（宽高比 ≥ 1.1，例如浏览器缩放到 250% 后的 768x471）：
+   这类视口比这张横图「更扁」，cover（以及 100vw 那档）算出来是「图宽 = 视口宽」，
+   即横向零余量 —— 于是改 background-position 完全不起作用，表现就是「怎么改都没变化」。
+   所以让它们单独走桌面那套：图宽锁死 107.83vw，横向必定留出 7.8% 余量，再把题字顶到右缘。
+   （桌面和这里的公式必须一致，否则同一台机器换个窗口宽度就跳位置。） */
+@media (max-width: 820px) and (min-aspect-ratio: 11/10) {
+  body { background-position: 0% 43%; background-size: max(107.83vw, 141.5vh) auto; }
 }
 .hidden { display: none !important; }
 
