@@ -57,8 +57,10 @@
 html, body { margin: 0; padding: 0; }
 body {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Roboto, Helvetica, Arial, sans-serif;
-  /* 背景图：想换回去就改这一行 —— 备选在 img/bg-cherry.jpg（樱花夜景）、img/bg-lake-original.jpg（瑞士湖景） */
-  background: var(--bg) url('../img/bg-warm.jpg') center top / cover no-repeat fixed;
+  /* 背景图：想换回去就改这一行 —— 备选在 img/bg-cherry.jpg（樱花夜景）、img/bg-lake-original.jpg（瑞士湖景）
+     2026-10-10：定位改成「底部对齐 + 略微放大」——把画面主体（海面／落日／左下角五位老人）抬到内容区中部，
+     保证整组老人落在主区域内、不被左右裁掉（原来 center/cover 在窄屏会把人裁掉一半）。 */
+  background: var(--bg) url('../img/bg-warm.jpg') 6% bottom / 136% auto no-repeat fixed;
   color: var(--text);
   font-size: 15px;
   line-height: 1.55;
@@ -363,6 +365,9 @@ label { font-size: 13px; color: var(--muted); font-weight: 600; display: block; 
 /* ---------- 手机适配 ---------- */
 @media (max-width: 820px) {
   .sidebar { display: none; }
+  /* 窄屏：整屏都是内容区。这张图是横构图，居中铺满会把左下角的人裁掉一半——
+     所以把画面横向左移到「五位老人」正好居中（25%），保证整组人都落进屏幕里。 */
+  body { background-position: 25% center; background-size: cover; }
   .main { padding-bottom: 72px; }
   .topbar { padding: 12px 16px; }
   .view { padding: 16px; }
