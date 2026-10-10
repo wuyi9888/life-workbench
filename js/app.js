@@ -987,6 +987,8 @@
     return n;
   }
   function gdArcEps(arc) { return (arc.episodes || []).slice().sort(function (a, b) { return a.seq - b.seq; }); }
+  // 阅读分钟数：按 300 字/分钟 估（2026-10-10 加，原来写死"5 分钟"，毛线的短段和长集都显示 5 分钟不准）
+  function gdReadMin(w) { return Math.max(2, Math.round((w || 0) / 300)); }
   function gdReadSeqs(arc, rec) {
     return gdArcEps(arc).filter(function (e) { return rec[gdKey(arc.key, e.seq)] && rec[gdKey(arc.key, e.seq)].done; }).map(function (e) { return e.seq; });
   }
@@ -1064,8 +1066,17 @@
         + '</ul></div>'
       : '';
     return '<div class="gd-works"><div class="gd-works-t">🖋 他这一集的作品'
-      + '<span class="gd-works-hint">（教材里的 · 教材外的，都放一点）</span></div>'
+      + '<span class="gd-works-hint">（读完全文再往下翻 · 教材里的、教材外的都放一点）</span></div>'
       + items + moreHtml + '</div>';
+  }
+  // 「留一点痕迹」输入框（2026-10-10 抽出：每集都要有，打没打卡都要有）
+  function gdOutForm(key, r) {
+    return '<form data-form="growth-output" data-id="' + key + '" class="gd-out">'
+      + '<label>留一点痕迹（一句话、一个感受、一个疑问，都行）</label>'
+      + '<textarea name="out" rows="2" placeholder="比如：原来「豁达」不是天生的，是先怕过之后才长出来的。">' + esc(r.out || '') + '</textarea>'
+      + '<div class="row" style="margin-top:6px"><button class="btn sm">💾 保存痕迹</button>'
+      + (r.out && r.outAt ? '<span class="gd-out-at">上次保存 ' + esc(String(r.outAt).slice(0, 16).replace('T', ' ')) + '</span>' : '')
+      + '</div></form>';
   }
   function gdEpisodeCard(arc, ep, opts) {
     opts = opts || {};
@@ -1074,6 +1085,9 @@
     const big = !!opts.big;
     const openAttr = ui.gdOpen[key] !== undefined ? (ui.gdOpen[key] ? ' open' : '') : (big ? ' open' : '');
     const pts = (ep.points || []).map(function (p) { return '<li>' + mdInline(p) + '</li>'; }).join('');
+    /* 2026-10-10 调序（五一说「故事还没读，作品我不会看」）：
+     * 正文 →（打卡 + 留痕迹）→ 作品角垫底。
+     * 打卡和痕迹必须紧跟正文，不能让人翻过两篇全文才摸到输入框。 */
     return '<div class="card gd-ep' + (r.done ? ' is-done' : '') + (big ? ' gd-ep-big' : '') + '">'
       + '<div class="gd-ep-top">'
       + '<span class="gd-ep-badge">第 ' + ep.seq + ' 集</span>'
@@ -1082,26 +1096,24 @@
       + (r.done ? '<span class="gd-ep-ok">✓ 已读' + (r.at ? ' · ' + esc(gdAtText(r.at)) : '') + '</span>' : '')
       + '</div>'
       + '<h2 class="gd-ep-title">' + esc(ep.title) + '</h2>'
-      + '<div class="gd-ep-meta">' + esc(ep.source || '') + ' · 约 ' + (ep.words || 0) + ' 字 · 读约 5 分钟</div>'
+      + '<div class="gd-ep-meta">' + esc(ep.source || '') + ' · 约 ' + (ep.words || 0) + ' 字 · 读约 ' + gdReadMin(ep.words) + ' 分钟</div>'
       + (ep.hook ? '<div class="gd-hook">' + mdInline(ep.hook) + '</div>' : '')
       + gdNodeHint(arc, ep)
       + (pts ? '<div class="gd-points"><div class="gd-points-t">本集要点</div><ol>' + pts + '</ol></div>' : '')
-      + gdWorksHtml(ep)
       + '<details class="gd-body-wrap"' + openAttr + '>'
       + '<summary>📖 ' + (big ? '全文' : '展开重读全文') + '（约 ' + (ep.words || 0) + ' 字）</summary>'
       + '<div class="gd-body">' + mdLite(ep.body) + '</div>'
       + '</details>'
+      // 2026-10-10 加：附加小课（不算进每天的字数，点开才看）
+      + (ep.extra ? '<details class="gd-body-wrap gd-extra-wrap"><summary>' + esc(ep.extra.title || '顺手理一理') + '</summary>'
+        + '<div class="gd-body">' + mdLite(ep.extra.body) + '</div></details>' : '')
       + (ep.next ? '<div class="gd-next">⏭ <b>下一集</b>：' + mdInline(ep.next) + '</div>' : '')
       + '<div class="gd-actions">'
       + '<button class="btn ' + (r.done ? '' : 'primary') + ' sm" data-action="growth-toggle" data-id="' + key + '">'
       + (r.done ? '↺ 取消已读' : '✓ 读完了，打卡') + '</button>'
       + '</div>'
-      + '<form data-form="growth-output" data-id="' + key + '" class="gd-out">'
-      + '<label>留一点痕迹（一句话、一个感受、一个疑问，都行）</label>'
-      + '<textarea name="out" rows="2" placeholder="比如：原来「豁达」不是天生的，是先怕过之后才长出来的。">' + esc(r.out || '') + '</textarea>'
-      + '<div class="row" style="margin-top:6px"><button class="btn sm">💾 保存痕迹</button>'
-      + (r.out && r.outAt ? '<span class="gd-out-at">上次保存 ' + esc(String(r.outAt).slice(0, 16).replace('T', ' ')) + '</span>' : '')
-      + '</div></form>'
+      + gdOutForm(key, r)
+      + gdWorksHtml(ep)
       + '</div>';
   }
   // 「更新总表」每一行（可展开重读）——人物线与并行线共用（2026-10-09 抽出，给毛线也接上）
@@ -1181,6 +1193,8 @@
         + '<button class="btn sm" data-action="growth-redo" data-id="' + key + '">' + (openK ? '收起' : '↺ 重读这' + unit) + '</button>'
         + '<span class="gd-done-next">' + tail + '</span>'
         + '</div>'
+        // 2026-10-10：打完卡也要能写痕迹——不然「读完才有话想说」这个时间点恰好没框
+        + (openK ? '' : gdOutForm(key, r))
         + (openK ? '<div class="gd-row-body">' + gdEpisodeCard(arc, ep, {}) + '</div>' : '')
         + '</div>';
     }

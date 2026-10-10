@@ -992,6 +992,10 @@ label { font-size: 13px; color: var(--muted); font-weight: 600; display: block; 
 .gd-body-wrap summary::-webkit-details-marker { display: none; }
 .gd-body-wrap summary::before { content: '▸ '; }
 .gd-body-wrap[open] summary::before { content: '▾ '; }
+/* 2026-10-10：附加小课（不算每天字数，点开才看）——视觉上比正文轻一档 */
+.gd-extra-wrap { background: var(--surface-2); border-radius: 8px; padding: 2px 12px 6px; margin-top: 10px; }
+.gd-extra-wrap > summary { font-size: 13px; color: var(--muted); font-weight: 700; }
+.gd-extra-wrap .gd-body { font-size: 14px; }
 .gd-body {
   border-top: 1px dashed var(--border); margin-top: 4px; padding-top: 12px;
   font-size: 15px; line-height: 1.85;
