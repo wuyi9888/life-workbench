@@ -63,12 +63,18 @@ body {
      · size：主体区占原图宽 84.45%、高 76.48% → 图片最大只能到 118.4vw 或 184.99vh，取小者，
        这样主体区恰好顶满视口的某一个方向（另一方向留白边），即「完整且最大」；
        最外层再包一个 max(100vw, …) 兜底，防止超宽屏两侧露底色。
-     · position：主体区在图上偏右偏上（中心约在 53%,49%），解出来的居中值是 72% / 44.5%。
-     改「大小」调第一个值，改「位置」调第二个值。 */
+     · position：主体区垂直居中用 43%。
+     2026-10-10 三次校准（她要「题字再往右」）：题字本来就长在图片右上角（原图 x 774→1417，
+     距主体区右边只有 38px），所以「字往右」不能靠平移 —— 平移多少都会被「图片必须铺满」这条卡住。
+     真正管用的是「图片整体小一点」：图越小，可右移的余量越大，字反而落得越右。
+     算下来图片宽 = 107.83vw 时，字右端刚好贴住视口右缘（再多就切字了）。
+     · size 三档取最大：100vw（宽度铺满）、141.5vh（高度铺满，防上下露底）、min(184.99vh, 107.83vw)（主体区完整的上限）
+     · position 15%：图片尽量右移（越大越左）
+     想「字再往右/图再大」就调 107.83vw 这个数：调小＝字更右但图更小。 */
   background-image: url('../img/bg-warm.jpg');
   background-color: var(--bg);
-  background-position: 72% 44.5%;
-  background-size: max(100vw, min(184.99vh, 118.4vw)) auto;
+  background-position: 15% 43%;
+  background-size: max(100vw, 141.5vh, min(184.99vh, 107.83vw)) auto;
   background-repeat: no-repeat;
   background-attachment: fixed;
   color: var(--text);
