@@ -1926,14 +1926,15 @@
           <button class="icon-btn" data-action="del-journal" data-id="${j.id}" title="删除">🗑</button>
         </div>
       </div>`).join('') : '<div class="empty"><div class="big">📖</div>还没有随笔<br>今天有什么想说的，随手记一笔</div>';
+    const todayCnt = jl.filter(j => j.date === T() && j.tag !== 'growth-review').length;
     return `
     <div class="card" id="journalFormCard">
       <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
-        <h2 style="margin:0">📖 每日随笔</h2>
+        <h2 style="margin:0">📖 随笔</h2>
         <span style="display:inline-flex;gap:6px;flex-wrap:wrap">${tabBtn('list', '复盘')}${tabBtn('journal', '随笔')}${tabBtn('weekly', '周度体检')}${tabBtn('tracking', '问题跟踪')}</span>
       </div>
-      <div class="note">随笔是写给自己的——事情、心情、胡思乱想都可以。它平时<b>不会被 AI 分析</b>、不会变成卡点，只安静地存在；只有每周「周度体检」深挖时，会把你这一周的文字一起通读一遍。</div>
-      <form data-form="save-journal">
+      <div class="note">随笔是写给自己的——事情、心情、胡思乱想都可以。它平时<b>不会被 AI 分析</b>、不会变成卡点，只安静地存在；只有每周「周度体检」深挖时，会把你这一周的文字一起通读一遍。<br><b>记一条存一条</b>：同一天可以写好几条，每条都单独留着，<b>不会覆盖上面那条</b>。</div>
+      <form data-form="save-journal" data-id="${edit ? esc(edit.id) : ''}">
         <div class="row" style="align-items:flex-end">
           <div><label>日期</label><input name="date" type="date" value="${edit ? edit.date : T()}" required></div>
           <div><label>心情（可选）</label><select name="mood"><option value="">—</option>${moodOpts}</select></div>
@@ -1943,6 +1944,7 @@
         <div class="row" style="margin-top:8px">
           <button class="btn primary sm">${edit ? '💾 保存修改' : '💾 保存随笔'}</button>
           ${edit ? '<button class="btn sm" data-action="journal-cancel" style="margin-left:8px">取消修改</button>' : ''}
+          ${(!edit && todayCnt) ? '<span class="gd-out-at">今天已经记了 ' + todayCnt + ' 条，再存就是第 ' + (todayCnt + 1) + ' 条</span>' : ''}
         </div>
       </form>
     </div>
@@ -2204,7 +2206,7 @@
     const jl = (s.journals && s.journals.entries || []).filter(j => j.date && j.date >= start).sort((a, b) => a.date.localeCompare(b.date));
     const rl = (s.reviews.entries || []).filter(e => e.date && e.date >= start).sort((a, b) => a.date.localeCompare(b.date));
     const txts = [];
-    jl.forEach(j => txts.push('【' + j.date + ' · 随笔' + (j.mood ? '(' + j.mood + ')' : '') + '】' + String(j.content || '').slice(0, 800)));
+    jl.forEach(j => txts.push('【' + j.date + (j.createdAt ? ' ' + String(j.createdAt).slice(11, 16) : '') + ' · 随笔' + (j.mood ? '(' + j.mood + ')' : '') + '】' + String(j.content || '').slice(0, 800)));
     rl.forEach(e => txts.push('【' + e.date + ' · 复盘】' + String(e.content || '').slice(0, 800)));
     return { text: txts.join('\n\n'), nJ: jl.length, nR: rl.length, start, label: start + ' ~ ' + T() };
   }
@@ -3597,7 +3599,7 @@
       case 'journal-edit': {
         const j = s.journals && s.journals.entries && s.journals.entries.find(x => x.id === id);
         if (j) {
-          ui.journalEdit = { date: j.date, content: j.content || '', mood: j.mood || '' };
+          ui.journalEdit = { id: j.id, date: j.date, content: j.content || '', mood: j.mood || '' };
           ui.reviewTab = 'journal'; render();
           setTimeout(() => { const c = $('#journalFormCard'); if (c) c.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 80);
         }
@@ -4414,9 +4416,19 @@
         if (!content || !content.trim()) { toast('写点什么再保存吧'); break; }
         if (!s.journals) s.journals = { entries: [] };
         const mood = get('mood') || '';
-        const ex = s.journals.entries.find(j => j.date === date);
-        if (ex) { ex.content = content; ex.mood = mood; ex.updatedAt = fmtStamp(); toast('已更新这篇随笔 📖'); }
-        else { s.journals.entries.unshift({ id: Store.uid(), date, content, mood, createdAt: fmtStamp(), updatedAt: fmtStamp() }); toast('已保存随笔 📖'); }
+        const editId = el.dataset.id || '';
+        if (editId) {
+          // 编辑模式（点了「✏️ 改」）：按 id 改那一条，改日期也只会影响这一条
+          const ex = s.journals.entries.find(j => j.id === editId);
+          if (ex) { ex.date = date; ex.content = content; ex.mood = mood; ex.updatedAt = fmtStamp(); toast('已改好这一条 ✏️'); }
+          else { s.journals.entries.unshift({ id: Store.uid(), date, content, mood, createdAt: fmtStamp(), updatedAt: fmtStamp() }); toast('已保存随笔 📖'); }
+        } else {
+          // 2026-10-10 五一拍板：随笔改成「记一条存一条」。
+          // 旧逻辑按日期去重——同一天写第二次会把上午那篇整篇冲掉，且不提醒。
+          // 现在每次都新存一条，同一天可以有好几条，旧的永远不动。
+          s.journals.entries.unshift({ id: Store.uid(), date, content, mood, createdAt: fmtStamp(), updatedAt: fmtStamp() });
+          toast('已保存随笔 📖');
+        }
         ui.journalEdit = null;
         Store.save(); render(); break;
       }
