@@ -57,8 +57,8 @@
 html, body { margin: 0; padding: 0; }
 body {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Roboto, Helvetica, Arial, sans-serif;
-  /* 背景图：想换回去就改这一行 —— 原图备份在 img/bg-lake-original.jpg（瑞士湖景） */
-  background: var(--bg) url('../img/bg-cherry.jpg') center top / cover no-repeat fixed;
+  /* 背景图：想换回去就改这一行 —— 备选在 img/bg-cherry.jpg（樱花夜景）、img/bg-lake-original.jpg（瑞士湖景） */
+  background: var(--bg) url('../img/bg-warm.jpg') center top / cover no-repeat fixed;
   color: var(--text);
   font-size: 15px;
   line-height: 1.55;
