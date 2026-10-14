@@ -65,6 +65,7 @@
       reviews: { entries: [], weeklyReports: [] }, // weeklyReports: [{ id,date,rangeStart,rangeEnd,createdAt,findings:[{kind,title,evidence,fix,habitPlan}],problems:[] }]
       wishlist: { items: [] }, // 愿望清单：{ id, text, category, status:'许愿中'|'已实现'|'已放下', date, createdAt, statusDate }
       journals: { entries: [] }, // 每日随笔：{ id, date, createdAt, updatedAt, content, mood }
+      curios: { entries: [] }, // 好奇手账：{ id, date, createdAt, text }（一句话记下一个好奇点，攒着到节点连点成线）
       habits: {
         // period: 'morning' | 'noon' | 'night' | ''（空=其他）
         // group : 同组的小动作排在同一行（'' 或不同值=各自单独一行）
@@ -187,6 +188,9 @@
         // 升级：每日随笔（旧备份没有）
         state.journals = state.journals && typeof state.journals === 'object' ? state.journals : { entries: [] };
         state.journals.entries = Array.isArray(state.journals.entries) ? state.journals.entries : [];
+        // 升级：好奇手账（旧备份没有）
+        state.curios = state.curios && typeof state.curios === 'object' ? state.curios : { entries: [] };
+        state.curios.entries = Array.isArray(state.curios.entries) ? state.curios.entries : [];
         // 升级：媒体内部字段补全（防旧数据缺失导致渲染崩溃）
         state.media.positioning = Object.assign({ direction: '', audience: '', tone: '', pillars: [] }, state.media.positioning || {});
         state.media.ideas = Array.isArray(state.media.ideas) ? state.media.ideas : [];
@@ -265,6 +269,7 @@
     if (!(st.favorites && empty(st.favorites.items))) return false;
     if (!(st.wishlist && empty(st.wishlist.items))) return false;
     if (!(st.journals && empty(st.journals.entries))) return false;
+    if (!(st.curios && empty(st.curios.entries))) return false;
     const m = st.media;
     if (!m) return false;
     if (!(empty(m.ideas) && empty(m.generated) && empty(m.materials) && empty(m.topics) && empty(m.publishes))) return false;

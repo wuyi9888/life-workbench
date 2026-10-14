@@ -94,6 +94,8 @@
     { id: 'overview', label: '总览', ico: '🏠' },
     { id: 'goals', label: '主题读书', ico: '📚' },
     { id: 'growth', label: '格局线', ico: '📜' },
+    { id: 'curios', label: '好奇手账', ico: '🔍' },
+    { id: 'lks', label: '光洙呀', ico: '🫧' },
     { id: 'favorites', label: '收藏清理', ico: '🧹' },
     { id: 'quotes', label: '语录整理', ico: '💬' },
     { id: 'gratitude', label: '感恩日记', ico: '🌿' },
@@ -105,10 +107,10 @@
     { id: 'todos', label: '待办清单', ico: '📝' },
     { id: 'settings', label: '设置', ico: '⚙️' }
   ];
-  const TITLES = { overview: '今日 · 寄语', goals: '主题阅读营', growth: '格局线 · 每日一集', favorites: '收藏夹清理', quotes: '语录整理', gratitude: '感恩日记', wishlist: '愿望清单', review: '复盘 · 随笔 · 体检', insight: '洞察 · 周报/月报', habits: '生活打卡 · 秩序', media: '自媒体 · 内容', todos: '待办清单', settings: '设置 · 数据', more: '全部板块' };
+  const TITLES = { overview: '今日 · 寄语', goals: '主题阅读营', growth: '格局线 · 每日一集', curios: '好奇手账 · 攒好奇', lks: '光洙呀 · 温暖记录', favorites: '收藏夹清理', quotes: '语录整理', gratitude: '感恩日记', wishlist: '愿望清单', review: '复盘 · 随笔 · 体检', insight: '洞察 · 周报/月报', habits: '生活打卡 · 秩序', media: '自媒体 · 内容', todos: '待办清单', settings: '设置 · 数据', more: '全部板块' };
 
   let current = 'overview';
-  const ui = { week: Store.isoWeek(), favFilter: 'pending', reviewTab: 'list', quoteFilter: 'all', quoteExpanded: null, quoteEditing: null, shelfView: 'covers', shelfExpanded: null, insightType: 'week', insightExpanded: null, mediaTab: 'idea', posOpen: false, onlineQuote: null, catOpen: {}, quoteLoading: false, quoteFailed: false, apiConfigOpen: false, coachSessions: {}, syncStatusText: '同步未开始', todoFilter: 'all', campBookOpen: null, campHistoryOpen: false, journalEdit: null, gdOpen: {}, gdRedo: {}, gdArc: '' };
+  const ui = { week: Store.isoWeek(), favFilter: 'pending', reviewTab: 'list', quoteFilter: 'all', quoteExpanded: null, quoteEditing: null, shelfView: 'covers', shelfExpanded: null, insightType: 'week', insightExpanded: null, mediaTab: 'idea', posOpen: false, onlineQuote: null, catOpen: {}, quoteLoading: false, quoteFailed: false, apiConfigOpen: false, coachSessions: {}, syncStatusText: '同步未开始', todoFilter: 'all', campBookOpen: null, campHistoryOpen: false, journalEdit: null, curioEdit: null, gdOpen: {}, gdRedo: {}, gdArc: '' };
 
   // 图片字段解析：'img://img_xxx' 引用 → IndexedDB dataURL；旧 dataURL 原样返回
   function resolveImg(v) {
@@ -142,7 +144,7 @@
   }
 
   const RENDERERS = {
-    overview: renderOverview, goals: renderGoals, growth: renderGrowth, favorites: renderFavorites, quotes: renderQuotes,
+    overview: renderOverview, goals: renderGoals, growth: renderGrowth, curios: renderCurios, lks: renderLks, favorites: renderFavorites, quotes: renderQuotes,
     gratitude: renderGratitude, review: renderReview, insight: renderInsight,
     habits: renderHabits, media: renderMedia, todos: renderTodos, wishlist: renderWishlist, settings: renderSettings,
     more: renderMoreGrid
@@ -186,7 +188,7 @@
   // 手机「更多」宫格：收纳低频板块（桌面侧栏仍全量直达）
   function renderMoreGrid() {
     const kept = MOBILE_BOTTOM.slice(0, 5);
-    const brief = { goals: '目标追踪 · 周计划 · 书架笔记', growth: '每日一集 · 历史人物 · 毛选', media: '选题 · 文案 · 内容记录', favorites: '收藏清理 · 转素材 · AI 清理', quotes: '金句收藏 · 置顶 · 配图', gratitude: '每日感恩 1–3 件小事', insight: '周报/月报 · 问答洞察', settings: '云端同步 · AI · 导入 · 备份' };
+    const brief = { goals: '目标追踪 · 周计划 · 书架笔记', growth: '每日一集 · 历史人物 · 毛选', curios: '随手记好奇 · 攒着连点成线', lks: '光洙的暖心回复 · 攒一点共情', media: '选题 · 文案 · 内容记录', favorites: '收藏清理 · 转素材 · AI 清理', quotes: '金句收藏 · 置顶 · 配图', gratitude: '每日感恩 1–3 件小事', insight: '周报/月报 · 问答洞察', settings: '云端同步 · AI · 导入 · 备份' };
     const more = SECTIONS.filter(x => !kept.includes(x.id)).map(x => `
       <div class="more-card" data-action="nav" data-sec="${x.id}">
         <div class="more-ico">${x.ico}</div>
@@ -1954,6 +1956,74 @@
     </div>`;
   }
 
+  /* ---------- 好奇手账：随手记下一个好奇点，攒到节点连点成线 ---------- */
+  function renderCurios() {
+    const s = S();
+    const entries = (s.curios && Array.isArray(s.curios.entries)) ? s.curios.entries : [];
+    const edit = ui.curioEdit || null;
+    const items = entries.length ? entries.map(c => `
+      <div class="item" style="align-items:flex-start">
+        <div class="grow">
+          <div class="title">${esc(c.text || '')}</div>
+          <div class="sub">${esc(c.date || '')}${c.createdAt ? '　🕐 ' + esc(String(c.createdAt).slice(11, 16)) : ''}</div>
+        </div>
+        <div class="tools">
+          <button class="btn sm" data-action="curio-edit" data-id="${c.id}" title="改这条">✏️</button>
+          <button class="icon-btn" data-action="del-curio" data-id="${c.id}" title="删除">🗑</button>
+        </div>
+      </div>`).join('') : '<div class="empty"><div class="big">🔍</div>还没有好奇点<br>看到一个想不明白的事，随手记一句</div>';
+    const todayCnt = entries.filter(c => c.date === T()).length;
+    return `
+    <div class="card" id="curioFormCard">
+      <h2>🔍 好奇手账</h2>
+      <div class="note">那些忽然冒出来的问号——「领导人是不是都这样抓本质？」「疫情那会儿到底怎么决策的？」——平时零散、转瞬就忘。这里只做一件事：<b>先把它们接住</b>。攒着攒着，它们会自己连成线。</div>
+      <form data-form="add-curio" data-id="${edit ? esc(edit.id) : ''}">
+        <label>${edit ? '改这个好奇点' : '记一个好奇点'}</label>
+        <textarea name="text" placeholder="一句话就行：看到什么、想到什么、哪里想不明白…" style="min-height:80px">${edit ? esc(edit.text) : ''}</textarea>
+        <div class="row" style="margin-top:8px">
+          <button class="btn primary sm">${edit ? '💾 保存修改' : '💾 记下来'}</button>
+          ${edit ? '<button class="btn sm" data-action="curio-cancel" style="margin-left:8px">取消</button>' : ''}
+          ${(!edit && todayCnt) ? '<span class="gd-out-at">今天已经记了 ' + todayCnt + ' 条</span>' : ''}
+        </div>
+      </form>
+    </div>
+    <div class="card">
+      <h2>✨ 连点成线</h2>
+      <div class="note">想梳理的时候（新的旧的一起看，说不定就串起来了），点下面的按钮把<b>全部</b>好奇点复制下来，粘给我说一句「梳理」，我帮你归归类、标一标背后的原理、再指一条值得深挖的主线。结果存进你的随笔本。</div>
+      <button class="btn" data-action="curio-review">📋 复制全部好奇点</button>
+    </div>
+    <div class="card">
+      <h2>📒 好奇手账（${entries.length}）</h2>
+      ${items}
+    </div>`;
+  }
+
+  /* ---------- 光洙呀：温暖记录，不拆解、不考试 ---------- */
+  function renderLks() {
+    const L = (typeof window !== 'undefined' && window.LKS) ? window.LKS : null;
+    if (!L) {
+      return '<div class="card"><h2>🫧 光洙呀</h2><div class="note">内容文件 <b>js/lks.js</b> 没加载进来。先刷新一下；还不行就是站点包里漏了这个文件。</div></div>';
+    }
+    const items = (L.items || []).slice().sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
+    const list = items.length ? items.map(it => `
+      <div class="lks-item">
+        <div class="lks-q">${esc(it.q || '')}</div>
+        <div class="lks-a">${esc(it.a || '')}</div>
+      </div>`).join('') : '<div class="empty"><div class="big">🫧</div>还没有内容，等晚上自动补料来</div>';
+    const tips = (L.tips && L.tips.length) ? (L.tips || []).map(t => `
+      <div class="lks-tip"><div class="lks-tip-t">💡 ${esc(t.t || '')}</div><div class="lks-tip-d">${esc(t.d || '')}</div></div>`).join('') : '';
+    return `
+    <div class="card">
+      <h2>🫧 光洙呀</h2>
+      <div class="note">${esc(L.intro || '')}</div>
+    </div>
+    <div class="card">
+      <h2>💬 那些暖到人的回复（${items.length}）</h2>
+      ${list}
+    </div>
+    ${tips ? `<div class="card"><h2>💡 能学到的一点点</h2><div class="note" style="margin-bottom:8px">从这些回复里偶尔咂摸出来的方法，能提炼就提炼，没有就算了。</div>${tips}</div>` : ''}`;
+  }
+
   /* ---------- 复盘闭环：卡点复发合并 + 昨日卡点跟进 + 周度体检 ---------- */
   function _norm(s) {
     return String(s == null ? '' : s).toLowerCase().replace(/[\s，。！？、,.!?'"“”‘’：:；;()（）\-—_~～]/g, '');
@@ -3615,6 +3685,25 @@
       case 'nav': go(id); break;
       case 'go-review': { ui.reviewTab = 'list'; go('review'); break; }
       case 'go-journal': { ui.reviewTab = 'journal'; go('review'); break; }
+      case 'curio-edit': {
+        const c = s.curios && Array.isArray(s.curios.entries) && s.curios.entries.find(x => x.id === id);
+        if (c) { ui.curioEdit = { id: c.id, text: c.text || '', date: c.date || T() }; render(); setTimeout(() => { const el = $('#curioFormCard'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 60); }
+        break;
+      }
+      case 'curio-cancel': { ui.curioEdit = null; render(); break; }
+      case 'del-curio': {
+        const arr = (s.curios && Array.isArray(s.curios.entries)) ? s.curios.entries : [];
+        const iC = arr.findIndex(x => x.id === id); if (iC >= 0) { undoDelete(arr, iC, arr.splice(iC, 1)[0], '好奇点'); Store.save(); render(); }
+        break;
+      }
+      case 'curio-review': {
+        const all = (s.curios && Array.isArray(s.curios.entries)) ? s.curios.entries.slice() : [];
+        if (!all.length) { toast('还没有好奇点，先记几条吧'); break; }
+        all.sort((a, b) => String(a.date || '').localeCompare(String(b.date || '')) || String(a.createdAt || '').localeCompare(String(b.createdAt || '')));
+        const lines = all.map((c, i) => (i + 1) + '. ' + (c.date ? '(' + c.date + ') ' : '') + (c.text || ''));
+        copyText('【好奇手账 · 全部 ' + all.length + ' 条】\n' + lines.join('\n') + '\n\n——帮我梳理一下这些好奇点（归簇 + 背后原理 + 一条主线）');
+        break;
+      }
       case 'reload': { location.reload(); break; }
       case 'toggle-api-config': { ui.apiConfigOpen = !ui.apiConfigOpen; render(); break; }
       case 'test-connection': {
@@ -4430,6 +4519,22 @@
           toast('已保存随笔 📖');
         }
         ui.journalEdit = null;
+        Store.save(); render(); break;
+      }
+      case 'add-curio': {
+        const text = (get('text') || '').trim();
+        if (!text) { toast('记一句想不明白的事吧'); break; }
+        if (!s.curios) s.curios = { entries: [] };
+        const editId = el.dataset.id || '';
+        if (editId) {
+          const ex = s.curios.entries.find(c => c.id === editId);
+          if (ex) { ex.text = text; toast('已改好 ✏️'); }
+          else { s.curios.entries.unshift({ id: Store.uid(), date: T(), text, createdAt: fmtStamp() }); toast('已记下 🔍'); }
+        } else {
+          s.curios.entries.unshift({ id: Store.uid(), date: T(), text, createdAt: fmtStamp() });
+          toast('已记下 🔍');
+        }
+        ui.curioEdit = null;
         Store.save(); render(); break;
       }
       case 'add-book': {

@@ -1185,3 +1185,19 @@ label { font-size: 13px; color: var(--muted); font-weight: 600; display: block; 
 }
 .gd-done-card .row { flex-wrap: nowrap; align-items: center; }
 .gd-done-card .row > * { flex: 0 0 auto; min-width: 0; }
+
+/* ---- 2026-10-14：光洙呀 · 温暖记录 ---- */
+.lks-item {
+  padding: 13px 15px;
+  border-left: 3px solid var(--primary);
+  background: linear-gradient(180deg, rgba(79,124,255,.07), transparent 70%);
+  border-radius: 10px;
+  margin: 10px 0;
+}
+[data-theme="dark"] .lks-item { background: linear-gradient(180deg, rgba(111,150,255,.10), transparent 70%); }
+.lks-q { font-size: 13px; color: var(--muted); margin-bottom: 7px; }
+.lks-a { font-size: 14px; line-height: 1.8; color: var(--text); }
+.lks-tips { display: flex; flex-direction: column; gap: 10px; }
+.lks-tip { padding: 11px 13px; background: var(--bg); border-radius: 9px; }
+.lks-tip-t { font-weight: 700; font-size: 14px; color: var(--text); margin-bottom: 3px; }
+.lks-tip-d { font-size: 13px; color: var(--muted); line-height: 1.7; }
