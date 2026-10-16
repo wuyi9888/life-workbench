@@ -1395,10 +1395,18 @@
      *   思想线：毛泽东 · 速览（order 1）→ 毛泽东（order 2）——速览自动存档。
      * season：1 = 人物线（站主位），0 = 并行线（毛线）。
      */
+    /* 2026-10-16 补：判「这条线在不在走」，要看它**有没有已经排到日子的集**。
+     * 新线允许提前把第 1 集排在未来（例：王阳明线 10-21 才开，内容先备好），
+     * 在那一天到来之前，它既不该抢走旧线的主位，也不该提前出现在存档里。
+     * 到了那一天，新线自动上位、旧线自动折进存档——还是不用改代码。 */
+    function gdLive(a) {
+      const today = T();
+      return gdArcEps(a).some(function (e) { return e.date && e.date <= today; });
+    }
     function gdLiveOf(wantMain) {
       const list = arcs.filter(function (a) {
         const sea = (a.season === undefined || a.season === null) ? 1 : a.season;
-        return (sea === 1) === !!wantMain && gdArcEps(a).length;
+        return (sea === 1) === !!wantMain && gdLive(a);
       });
       return list.slice().sort(function (x, y) { return (x.order || 0) - (y.order || 0); }).pop() || null;
     }
@@ -1406,7 +1414,7 @@
     const sideArc = gdLiveOf(false);
     const sideArcs = sideArc ? [sideArc] : [];
     const archArcs = arcs.filter(function (a) {
-      return a !== mainArc && a !== sideArc && gdArcEps(a).length;
+      return a !== mainArc && a !== sideArc && gdLive(a);
     });
     const allEps = [];
     arcs.forEach(function (a) { gdArcEps(a).forEach(function (e) { allEps.push({ arc: a, ep: e, key: gdKey(a.key, e.seq) }); }); });
@@ -1416,7 +1424,7 @@
 
     const hero = '<div class="card gd-hero">'
       + '<div class="gd-hero-head"><h2>📜 格局线 · 每日一集</h2><span class="gd-hero-tag">读到就赢</span></div>'
-      + '<div class="note">用「量」不用「期」：每条线每天 <b>1 集 · 约 1200–1500 字</b>（读 5 分钟）。读完点一下就算达标——<b>没有「欠账」这回事</b>。状态好的日子可以连读两集，但最低标准永远只有一集。<br>库存是<b>自动续的</b>：每晚 <b>22:30</b> 会自动检查一遍，缺了就补上第二天的量——<b>你不用来催，也不用提前做</b>。<br>每读到一段落（人物线一条读完 / 毛泽东线读完一卷）会空一天做 <b>📜 回顾日</b>（那天两条线都停）——不输入，只输出：把这一段攒下的痕迹一次摊开，连成一条线。</div>'
+      + '<div class="note">用「量」不用「期」：每条线每天 <b>1 集 · 1200–2000 字</b>（读 4～6 分钟）。读完点一下就算达标——<b>没有「欠账」这回事</b>。状态好的日子可以连读两集，但最低标准永远只有一集。<br>库存是<b>自动续的</b>：每晚 <b>22:30</b> 会自动检查一遍，缺了就补上第二天的量——<b>你不用来催，也不用提前做</b>。<br>每读到一段落（人物线一条读完 / 毛泽东线读完一卷）会空一天做 <b>📜 回顾日</b>（那天两条线都停）——不输入，只输出：把这一段攒下的痕迹一次摊开，连成一条线。</div>'
       + '<div class="gd-stats">'
       + '<div class="gd-stat"><b>' + readN + '</b><span>已读</span></div>'
       + '<div class="gd-stat"><b>' + totalN + '</b><span>已更新</span></div>'
@@ -1480,7 +1488,7 @@
       }
       // 2026-10-16：毛线不再只按人走，还按「卷」分——一段讲清楚一件事，别再用一段吞掉十几年
       sideHtml += '<div class="card gd-side-intro"><div class="note">这条线跟着一个人，一年一年往下走：'
-        + '<b>先看他当时面对的是什么局面，再看他怎么判断、怎么动手。</b>每天一' + unit + '，约 1200–1500 字（跟人物线一样的量）。'
+        + '<b>先看他当时面对的是什么局面，再看他怎么判断、怎么动手。</b>每天一' + unit + '，约 1200–2000 字（跟人物线一样的量）。'
         + (arc.volTotal ? '整条线分 <b>' + arc.volTotal + ' 卷</b>，每卷末空一天做一次 <b>📜 回顾日</b>。' : '')
         + '它要治的是「有意识、没行动」：<b>先看清「谁是我的敌人」，再谈怎么办。</b></div></div>';
       sideHtml += '<div class="card"><h2>' + arc.ico + ' ' + esc(arc.name) + '线 · 更新总表</h2>'
