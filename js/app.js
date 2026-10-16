@@ -1137,20 +1137,23 @@
         + (isOpen ? '<div class="gd-row-body">' + gdEpisodeCard(arc, e, {}) + '</div>' : '')
         + '</div>';
     }).join('');
-    // 2026-10-10：总表末尾挂一行「回顾日」——机制一眼可见，没到时候只是灰色预告
-    const rv = gdReviewCfg(arc);
-    if (!rv) return rows;
-    const rvDate = gdReviewDate(arc);
-    const done = !!gdReviewEntry(arc);
-    const status = done ? '✓ 已回顾' : (!rvDate ? '读完再回顾' : (T() < rvDate ? '备着' : '待回顾'));
-    const soon = !done && (!rvDate || T() < rvDate);
-    return rows + '<div class="gd-row gd-row-review' + (done ? ' done' : '') + '">'
-      + '<div class="gd-row-line">'
-      + '<span class="gd-row-no">📜</span>'
-      + '<span class="gd-row-t">回顾日 · 把这条线连起来</span>'
-      + '<span class="gd-row-d">' + (rvDate ? esc(rvDate.slice(5)) : '——') + '</span>'
-      + '<span class="gd-row-s' + (soon ? ' later' : '') + '">' + status + '</span>'
-      + '</div></div>';
+    // 2026-10-10：总表末尾挂「回顾日」——机制一眼可见，没到时候只是灰色预告
+    // 2026-10-16：改成「有几个回顾日就挂几行」（毛线按卷停）
+    const rvs = gdReviews(arc);
+    if (!rvs.length) return rows;
+    return rows + rvs.map(function (rv) {
+      const d = gdReviewDateOf(arc, rv);
+      const done = !!gdReviewEntryOf(arc, rv);
+      const status = done ? '✓ 已回顾' : (!d ? '读完再回顾' : (T() < d ? '备着' : '待回顾'));
+      const soon = !done && (!d || T() < d);
+      return '<div class="gd-row gd-row-review' + (done ? ' done' : '') + '">'
+        + '<div class="gd-row-line">'
+        + '<span class="gd-row-no">📜</span>'
+        + '<span class="gd-row-t">' + esc(rv.title || '回顾日 · 把这条线连起来') + '</span>'
+        + '<span class="gd-row-d">' + (d ? esc(d.slice(5)) : '——') + '</span>'
+        + '<span class="gd-row-s' + (soon ? ' later' : '') + '">' + status + '</span>'
+        + '</div></div>';
+    }).join('');
   }
   /* ---- 2026-10-09：「今日」对准当天 ----
    * 五一的原话：一天一集最容易坚持，像把「今日待办」清零；
@@ -1180,58 +1183,93 @@
   }
   /* ---- 2026-10-10：回顾日（节点上的「输出」）----
    * 五一的原话：不能只有输入；平时的痕迹是一条一条的单线，需要在节点上「连点成线」。
-   * 她拍板的规则：① 每条线读完空一天做回顾；② 那天两条线都停；③ 回顾写进随笔本。
-   * 日期不写死——跟着该线最后一集自动算（写满 afterSeq 集后，回顾日 = 最后一集的次日），
-   * 这样补料顺延几天也不会错位。
-   * 回顾内容存进随笔本时带 tag，**不走「按日期去重」那条路**（否则会覆盖当天的随笔）。
+   * 她拍板的规则：① 读到某个节点空一天做回顾；② 那天两条线都停；③ 回顾写进随笔本。
+   * ------------------------------------------------------------------
+   * 2026-10-16 升级：一条线可以有 **好几个** 回顾日。
+   * 起因——五一读完毛泽东线 6 段速览后说「太简略了，没法回顾」，要按《毛泽东传》那样细讲；
+   * 于是毛线拆成六卷、每卷末停一次，**一卷一个回顾日**。
+   * 写法（新）：arc.reviews = [ { afterSeq: 9, title, lead, hint, questions:[…] }, … ]
+   * 写法（旧）：arc.review（单个）—— 仍然兼容，自动当成第 0 个。
+   * 日期不写死——跟着「第 afterSeq 集」的日期自动算（＝那一集的次日），补料顺延也不会错位。
+   * 回顾内容存进随笔本时带 tag + rv（第几个回顾日），
+   * **不走「按日期去重」那条路**（否则会覆盖她当天的随笔）；
+   * 同一条线的同一次回顾再写 = 更新那一篇（按 tag + arc + rv 找）。
    * ============================================================ */
-  function gdReviewCfg(arc) { return (arc && arc.review) ? arc.review : null; }
-  // 回顾日日期；还没写满 afterSeq 集 → 返回 ''（不到时候）
-  function gdReviewDate(arc) {
-    const rv = gdReviewCfg(arc); if (!rv) return '';
-    const eps = gdArcEps(arc);
-    const last = eps[eps.length - 1];
-    if (!last || !last.date) return '';
-    if (rv.afterSeq && last.seq < rv.afterSeq) return '';
-    return Store.addDays(last.date, 1);
+  // 这条线所有的回顾日设置（统一成对象数组，每个带 _i = 第几个）
+  function gdReviews(arc) {
+    if (!arc) return [];
+    const pick = function (r, i) {
+      return { _i: i, afterSeq: r.afterSeq, title: r.title, lead: r.lead, hint: r.hint, questions: r.questions };
+    };
+    if (arc.reviews && arc.reviews.length) return arc.reviews.map(pick);
+    if (arc.review) return [pick(arc.review, 0)];
+    return [];
   }
-  // 该线的回顾记录（存在随笔本里的那一条）
-  function gdReviewEntry(arc) {
+  // 按集号找那一集
+  function gdEpBySeq(arc, seq) {
+    const eps = gdArcEps(arc);
+    for (let i = 0; i < eps.length; i++) { if (eps[i].seq === seq) return eps[i]; }
+    return null;
+  }
+  // 某一个回顾日的日期；「第 afterSeq 集」还没写出来 → ''（不到时候）
+  function gdReviewDateOf(arc, rv) {
+    const ep = gdEpBySeq(arc, rv.afterSeq);
+    if (!ep || !ep.date) return '';
+    return Store.addDays(ep.date, 1);
+  }
+  // 某一个回顾日的记录（存在随笔本里的那一条）
+  function gdReviewEntryOf(arc, rv) {
     const s = S();
     const jl = (s.journals && Array.isArray(s.journals.entries)) ? s.journals.entries : [];
-    return jl.filter(function (j) { return j.tag === 'growth-review' && j.arc === arc.key; })[0] || null;
+    return jl.filter(function (j) {
+      return j.tag === 'growth-review' && j.arc === arc.key && ((j.rv === undefined ? 0 : j.rv) === rv._i);
+    })[0] || null;
   }
-  // 今天这条线要不要进回顾日（到了日子 + 最后一集读完 + 还没回顾）
-  function gdReviewOpen(arc, rec) {
-    const d = gdReviewDate(arc); if (!d) return false;
-    if (T() < d) return false;
-    const eps = gdArcEps(arc);
-    const last = eps[eps.length - 1];
-    if (!last || !gdIsDone(arc, rec, last)) return false;
-    return !gdReviewEntry(arc);
+  // 今天该过的那一个回顾日：已到期 + 那一集读完 + 还没写（有多个就取最早的一个）
+  function gdPendingReview(arc, rec) {
+    const list = gdReviews(arc);
+    for (let i = 0; i < list.length; i++) {
+      const rv = list[i];
+      const d = gdReviewDateOf(arc, rv);
+      if (!d || T() < d) continue;
+      const ep = gdEpBySeq(arc, rv.afterSeq);
+      if (!ep || !gdIsDone(arc, rec, ep)) continue;
+      if (gdReviewEntryOf(arc, rv)) continue;
+      return rv;
+    }
+    return null;
   }
   // 今天有没有「别的线」在过回顾日（有 → 本条线停一天）
   function gdOtherReviewToday(arc) {
     const g = G(); if (!g) return null;
     const t = T();
     return (g.arcs || []).filter(function (a) {
-      return a !== arc && gdReviewDate(a) === t;
+      if (a === arc) return false;
+      return gdReviews(a).some(function (rv) { return gdReviewDateOf(a, rv) === t; });
     })[0] || null;
   }
-  // 回顾记录的表单（新写 / 改都用它）
-  function gdReviewForm(arc, content, label, btn) {
-    return '<form data-form="save-growth-review" data-arc="' + esc(arc.key) + '" class="gd-out gd-review-form">'
+  // 回顾记录的表单（新写 / 改都用它；data-rv 记住是这条线的第几个回顾日）
+  function gdReviewForm(arc, rv, content, label, btn) {
+    return '<form data-form="save-growth-review" data-arc="' + esc(arc.key) + '" data-rv="' + rv._i + '" class="gd-out gd-review-form">'
       + '<label>' + esc(label) + '</label>'
       + '<textarea name="out" rows="8" placeholder="不用写得漂亮，想到什么写什么——比如：「我最意外的是……」">' + esc(content || '') + '</textarea>'
       + '<div class="row" style="margin-top:6px"><button class="btn primary sm">' + esc(btn) + '</button>'
       + '<span class="gd-out-at">存进随笔本 📖</span></div>'
       + '</form>';
   }
-  // 回顾日大卡片：把这十天的痕迹全部摊开 + 一组问题 + 一个长输入框
-  function gdReviewCard(arc) {
-    const rv = gdReviewCfg(arc); if (!rv) return '';
-    const eps = gdArcEps(arc);
-    const entry = gdReviewEntry(arc);
+  // 一次回顾覆盖的集数区间：上一次回顾之后 → 这一次的 afterSeq
+  function gdReviewRange(arc, rv) {
+    const list = gdReviews(arc);
+    const prev = rv._i > 0 ? list[rv._i - 1] : null;
+    return { from: prev ? prev.afterSeq + 1 : 1, to: rv.afterSeq };
+  }
+  // 回顾日大卡片：把这一段攒下的痕迹全部摊开 + 一组问题 + 一个长输入框
+  function gdReviewCard(arc, rv) {
+    if (!rv) return '';
+    const unit = arc.unit || '集';
+    const rg = gdReviewRange(arc, rv);
+    const eps = gdArcEps(arc).filter(function (e) { return e.seq >= rg.from && e.seq <= rg.to; });
+    const entry = gdReviewEntryOf(arc, rv);
     const traces = eps.filter(function (e) {
       const r = gdRec(gdKey(arc.key, e.seq));
       return r.done || r.out;
@@ -1243,40 +1281,42 @@
         + '<span class="gd-trace-t">' + esc(e.title) + '</span>'
         + '<span class="gd-trace-d">' + esc(String(e.date || '').slice(5)) + '</span></div>'
         + (r.out ? '<div class="gd-trace-b">' + esc(r.out) + '</div>'
-          : '<div class="gd-trace-b none">这一集没留痕迹</div>')
+          : '<div class="gd-trace-b none">这一' + unit + '没留痕迹</div>')
         + '</div>';
-    }).join('') : '<div class="note">这条线还没留下痕迹——那就直接看下面的问题。</div>';
+    }).join('') : '<div class="note">这一段还没留下痕迹——那就直接看下面的问题。</div>';
     const qHtml = (rv.questions || []).map(function (x) {
       return '<li class="gd-q"><div class="gd-q-t">' + mdInline(x.q) + '</div>'
         + (x.tip ? '<div class="gd-q-tip">' + mdInline(x.tip) + '</div>' : '') + '</li>';
     }).join('');
     const head = '<div class="gd-review-top"><span class="gd-review-badge">📜 回顾日</span>'
-      + '<span class="gd-review-sub">' + esc(arc.name) + '线读完 · 今天两条线都停</span></div>'
+      + '<span class="gd-review-sub">' + esc(arc.name) + '线 · 第 ' + rg.from + '–' + rg.to + ' ' + unit + '读完 · 今天两条线都停</span></div>'
       + '<h2 class="gd-review-title">' + esc(rv.title || (arc.name + '线 · 回顾日')) + '</h2>';
     if (entry) {
       return '<div class="card gd-review is-done">' + head
-        + '<div class="gd-done-line"><span class="gd-done-ok">✓ 这条线已经回顾过了</span>'
+        + '<div class="gd-done-line"><span class="gd-done-ok">✓ 这一次已经回顾过了</span>'
         + ((entry.updatedAt || entry.createdAt) ? '<span class="gd-done-at">' + esc(String(entry.updatedAt || entry.createdAt).slice(0, 16).replace('T', ' ')) + '</span>' : '')
         + '</div>'
         + '<div class="note">它已经存进你的<b>随笔本</b>了，随时可以回去改。</div>'
-        + gdReviewForm(arc, entry.content, '改一改（写多少都行）', '💾 更新这篇回顾')
+        + gdReviewForm(arc, rv, entry.content, '改一改（写多少都行）', '💾 更新这篇回顾')
         + '</div>';
     }
     return '<div class="card gd-review">' + head
       + '<div class="gd-review-lead">' + mdLite(rv.lead) + '</div>'
-      + '<div class="gd-block-t">你这十天留下的痕迹 · 一次摊开</div>'
+      + '<div class="gd-block-t">这一段留下的痕迹 · 一次摊开</div>'
       + '<div class="gd-traces">' + traceHtml + '</div>'
-      + '<div class="gd-block-t">把这一条线想一遍 · 几个问题</div>'
+      + '<div class="gd-block-t">把这一卷想一遍 · 几个问题</div>'
       + '<ul class="gd-qs">' + qHtml + '</ul>'
       + (rv.hint ? '<div class="note">' + mdInline(rv.hint) + '</div>' : '')
-      + gdReviewForm(arc, '', '写你自己的回顾（写多少都行）', '💾 存进随笔本')
+      + gdReviewForm(arc, rv, '', '写你自己的回顾（写多少都行）', '💾 存进随笔本')
       + '</div>';
   }
   // 今日槽位（unit = 量词：人物线「集」/ 毛线「段」）
   function gdTodaySlot(arc, rec, unit, label) {
+    unit = unit || arc.unit || '集';
     // ① 本线到了回顾日 → 整个今日槽换成回顾卡片
-    if (gdReviewOpen(arc, rec)) {
-      return '<div class="gd-today-label review">📜 今天不推新的 · 回顾日</div>' + gdReviewCard(arc);
+    const pend = gdPendingReview(arc, rec);
+    if (pend) {
+      return '<div class="gd-today-label review">📜 今天不推新的 · 回顾日</div>' + gdReviewCard(arc, pend);
     }
     // ② 别的线今天在过回顾日 → 本条线今天停一天
     const other = gdOtherReviewToday(arc);
@@ -1284,25 +1324,25 @@
       return '<div class="gd-today-label done">📜 今天停一天 · ' + esc(other.name) + '线回顾日</div>'
         + '<div class="card gd-done-card">'
         + '<div class="gd-done-line"><span class="gd-done-ok">🌙 今天两条线都停</span></div>'
-        + '<div class="note"><b>' + esc(other.name) + '线读完了</b>，今天空出来做一次整体回顾，所以你这条线也停一天——明天照常。<b>今天没有任何要补的东西。</b></div>'
+        + '<div class="note"><b>' + esc(other.name) + '线今天在过回顾日</b>，今天空出来做一次整体回顾，所以你这条线也停一天——明天照常。<b>今天没有任何要补的东西。</b></div>'
         + '</div>';
     }
     // ③ 这条线整条读完、回顾也做完了 → 完结面板
-    const rvDate = gdReviewDate(arc);
-    const rvEntry = gdReviewEntry(arc);
-    if (rvDate && rvEntry) {
-      const last0 = gdArcEps(arc).slice(-1)[0];
-      if (last0 && gdIsDone(arc, rec, last0)) {
-        return '<div class="gd-today-label done">🎉 ' + esc(arc.name) + '线 · 已完结</div>'
-          + '<div class="card gd-done-card">'
-          + '<div class="gd-done-line"><span class="gd-done-ok">✓ 全部读完 · 回顾也做完了</span>'
-          + (rvEntry.updatedAt ? '<span class="gd-done-at">' + esc(String(rvEntry.updatedAt).slice(0, 16).replace('T', ' ')) + '</span>' : '')
-          + '</div>'
-          + '<div class="note">这条线闭合了 🌙 下一条线开场的头一天，这个位置会自己出现新的第一' + unit + '——<b>不用你来催</b>。</div>'
-          + '<details class="gd-body-wrap"><summary>📜 看我写的回顾</summary>'
-          + '<div class="gd-body"><div style="white-space:pre-wrap">' + esc(rvEntry.content) + '</div></div></details>'
-          + '</div>';
-      }
+    const epsAll0 = gdArcEps(arc);
+    const rvsAll = gdReviews(arc);
+    const lastRv = rvsAll[rvsAll.length - 1];
+    const rvEntry = lastRv ? gdReviewEntryOf(arc, lastRv) : null;
+    const allRead = epsAll0.length && epsAll0.every(function (e) { return gdIsDone(arc, rec, e); });
+    if (allRead && rvEntry) {
+      return '<div class="gd-today-label done">🎉 ' + esc(arc.name) + '线 · 已完结</div>'
+        + '<div class="card gd-done-card">'
+        + '<div class="gd-done-line"><span class="gd-done-ok">✓ 全部 ' + epsAll0.length + ' ' + unit + '读完 · 回顾也做完了</span>'
+        + (rvEntry.updatedAt ? '<span class="gd-done-at">' + esc(String(rvEntry.updatedAt).slice(0, 16).replace('T', ' ')) + '</span>' : '')
+        + '</div>'
+        + '<div class="note">这条线闭合了 🌙 下一条线开场的头一天，这个位置会自己出现新的第一' + unit + '——<b>不用你来催</b>。</div>'
+        + '<details class="gd-body-wrap"><summary>📜 看我写的最后一次回顾</summary>'
+        + '<div class="gd-body"><div style="white-space:pre-wrap">' + esc(rvEntry.content) + '</div></div></details>'
+        + '</div>';
     }
     const ep = gdDueEp(arc, rec);
     if (!ep) return '';
@@ -1349,8 +1389,25 @@
     const s = S();
     const rec = (s.growth && s.growth.records) || {};
     const arcs = g.arcs || [];
-    const mainArc = arcs.filter(function (a) { return a.season === 1; })[0] || arcs[0];
-    const sideArcs = arcs.filter(function (a) { return a !== mainArc; });
+    /* 2026-10-16：一条「季」里可以有好几条线，只有 **order 最大、并且已经有集数** 的那条在走，
+     * 更早的自己折进下面的「📦 存档」。这样：
+     *   人物线：苏轼（order 1）→ 王阳明（order 2）——苏轼自动存档，不用手工改代码；
+     *   思想线：毛泽东 · 速览（order 1）→ 毛泽东（order 2）——速览自动存档。
+     * season：1 = 人物线（站主位），0 = 并行线（毛线）。
+     */
+    function gdLiveOf(wantMain) {
+      const list = arcs.filter(function (a) {
+        const sea = (a.season === undefined || a.season === null) ? 1 : a.season;
+        return (sea === 1) === !!wantMain && gdArcEps(a).length;
+      });
+      return list.slice().sort(function (x, y) { return (x.order || 0) - (y.order || 0); }).pop() || null;
+    }
+    const mainArc = gdLiveOf(true);
+    const sideArc = gdLiveOf(false);
+    const sideArcs = sideArc ? [sideArc] : [];
+    const archArcs = arcs.filter(function (a) {
+      return a !== mainArc && a !== sideArc && gdArcEps(a).length;
+    });
     const allEps = [];
     arcs.forEach(function (a) { gdArcEps(a).forEach(function (e) { allEps.push({ arc: a, ep: e, key: gdKey(a.key, e.seq) }); }); });
     const readN = allEps.filter(function (x) { return rec[x.key] && rec[x.key].done; }).length;
@@ -1359,7 +1416,7 @@
 
     const hero = '<div class="card gd-hero">'
       + '<div class="gd-hero-head"><h2>📜 格局线 · 每日一集</h2><span class="gd-hero-tag">读到就赢</span></div>'
-      + '<div class="note">用「量」不用「期」：每条线每天 <b>1 集 · 约 1200–1500 字</b>（读 5 分钟）。读完点一下就算达标——<b>没有「欠账」这回事</b>。状态好的日子可以连读两集，但最低标准永远只有一集。<br>库存是<b>自动续的</b>：每晚 <b>22:30</b> 会自动检查一遍，缺了就补上第二天的量——<b>你不用来催，也不用提前做</b>。<br>每条线读完会空一天做 <b>📜 回顾日</b>（那天两条线都停）——不输入，只输出：把这十集攒下的痕迹一次摊开，连成一条线。</div>'
+      + '<div class="note">用「量」不用「期」：每条线每天 <b>1 集 · 约 1200–1500 字</b>（读 5 分钟）。读完点一下就算达标——<b>没有「欠账」这回事</b>。状态好的日子可以连读两集，但最低标准永远只有一集。<br>库存是<b>自动续的</b>：每晚 <b>22:30</b> 会自动检查一遍，缺了就补上第二天的量——<b>你不用来催，也不用提前做</b>。<br>每读到一段落（人物线一条读完 / 毛泽东线读完一卷）会空一天做 <b>📜 回顾日</b>（那天两条线都停）——不输入，只输出：把这一段攒下的痕迹一次摊开，连成一条线。</div>'
       + '<div class="gd-stats">'
       + '<div class="gd-stat"><b>' + readN + '</b><span>已读</span></div>'
       + '<div class="gd-stat"><b>' + totalN + '</b><span>已更新</span></div>'
@@ -1389,7 +1446,7 @@
       const todayCard = gdTodaySlot(mainArc, rec, '集', '今日一集');
 
       const listRows = gdListRows(mainArc, eps);
-      const listCard = '<div class="card"><h2>🗂 苏轼线 · 更新总表</h2>'
+      const listCard = '<div class="card"><h2>🗂 ' + esc(mainArc.name) + '线 · 更新总表</h2>'
         + '<div class="note">已更新 ' + eps.length + ' 集，计划共 ' + (mainArc.total || eps.length) + ' 集。读完的会变绿，可以随时点开重读——<b>没到日子的标「备着」，不算欠账</b>。</div>'
         + listRows + '</div>';
 
@@ -1397,13 +1454,14 @@
       mainHtml = tlCard + listCard + todayCard;
     }
 
-    // ---- 并行线（毛选） ----
+    // ---- 并行线（毛线 / 思想线） ----
     let sideHtml = '';
     sideArcs.forEach(function (arc) {
       const eps = gdArcEps(arc);
       if (!eps.length) return;
+      const unit = arc.unit || '段';
       const readSeqs = gdReadSeqs(arc, rec);
-      sideHtml += '<div class="gd-today-label">' + arc.ico + ' 并行线 · ' + esc(arc.name) + '　<span class="gd-side-prog">已读 ' + readSeqs.length + ' / 已更新 ' + eps.length + ' 段</span></div>';
+      sideHtml += '<div class="gd-today-label">' + arc.ico + ' 并行线 · ' + esc(arc.name) + '　<span class="gd-side-prog">已读 ' + readSeqs.length + ' / 已更新 ' + eps.length + ' ' + unit + '</span></div>';
       // 2026-10-09：副线也接上「刻度尺」——苏轼那条量的是一生，这条量的是「局面有多大」
       if (arc.timeline && arc.timeline.length) {
         const sMaxRead = readSeqs.length ? Math.max.apply(null, readSeqs) : 0;
@@ -1414,25 +1472,46 @@
           + '<span class="gd-arc-theme">并行线 · ' + esc(arc.theme) + '</span></div>'
           + '<div class="note">这条尺子量的不是年纪，是<b>局面的规模</b>：'
           + '<b>' + esc(arc.timeline[0].t) + '</b> → <b>' + esc(arc.timeline[arc.timeline.length - 1].t) + '</b>。'
-          + '每读完一段，对应节点就点亮。你会亲眼看着一个「小」是怎么变成「大」的。</div>'
+          + '每读完一' + unit + '，对应节点就点亮。你会亲眼看着一个「小」是怎么变成「大」的。</div>'
           + gdTimelineHtml(arc, rec)
           + (sHere ? '<div class="gd-tl-hint">🔴 <b>你在这里</b>：' + esc(sHere) + '</div>'
-            : '<div class="gd-tl-hint">尺子还是灰的——读完第 1 段，最左边两个节点就会亮起来 🌱</div>')
+            : '<div class="gd-tl-hint">尺子还是灰的——读完第 1 ' + unit + '，最左边两个节点就会亮起来 🌱</div>')
           + '</div>';
       }
-      sideHtml += '<div class="card gd-side-intro"><div class="note">这条线<b>不按《毛选》的篇目顺序，也不排进四季</b>——它跟着一个人，一年一年往下走：'
-        + '<b>先看他当时面对的是什么局面，再看他怎么判断、怎么动手。</b>每天一段，约 1200–1500 字（跟人物线一样的量）。'
+      // 2026-10-16：毛线不再只按人走，还按「卷」分——一段讲清楚一件事，别再用一段吞掉十几年
+      sideHtml += '<div class="card gd-side-intro"><div class="note">这条线跟着一个人，一年一年往下走：'
+        + '<b>先看他当时面对的是什么局面，再看他怎么判断、怎么动手。</b>每天一' + unit + '，约 1200–1500 字（跟人物线一样的量）。'
+        + (arc.volTotal ? '整条线分 <b>' + arc.volTotal + ' 卷</b>，每卷末空一天做一次 <b>📜 回顾日</b>。' : '')
         + '它要治的是「有意识、没行动」：<b>先看清「谁是我的敌人」，再谈怎么办。</b></div></div>';
-      // 2026-10-09：并行线也给一张总表（否则读完的段落找不回来），并按「刻度尺 → 总表 → 今日一段」排
       sideHtml += '<div class="card"><h2>' + arc.ico + ' ' + esc(arc.name) + '线 · 更新总表</h2>'
-        + '<div class="note">已更新 ' + eps.length + ' 段，计划共 ' + (arc.total || eps.length) + ' 段。读完的会变绿，可以随时点开重读——<b>没到日子的标「备着」，不算欠账</b>。</div>'
+        + '<div class="note">已更新 ' + eps.length + ' ' + unit + '，计划共 ' + (arc.total || eps.length) + ' ' + unit + '。读完的会变绿，可以随时点开重读——<b>没到日子的标「备着」，不算欠账</b>。</div>'
         + gdListRows(arc, eps) + '</div>';
-      sideHtml += gdTodaySlot(arc, rec, '段', '今日一段');
+      sideHtml += gdTodaySlot(arc, rec, unit, '今日一' + unit);
     });
+
+    // ---- 📦 存档：更早的线（读完的卷 / 换掉的老版本）折起来，不占今天的版面 ----
+    let archHtml = '';
+    if (archArcs.length) {
+      archHtml = '<div class="gd-today-label">📦 存档 · 已经收尾、可以回看的线</div>'
+        + archArcs.map(function (a) {
+          const aeps = gdArcEps(a);
+          const aRead = gdReadSeqs(a, rec);
+          const aUnit = a.unit || '集';
+          return '<details class="card gd-arch"><summary>'
+            + '<span class="gd-arch-ico">' + a.ico + '</span>'
+            + '<span class="gd-arch-name">' + esc(a.name) + '</span>'
+            + '<span class="gd-side-prog">已读 ' + aRead.length + ' / ' + aeps.length + ' ' + aUnit + '</span>'
+            + '<span class="gd-arch-more">展开重读 ▾</span>'
+            + '</summary>'
+            + (a.archNote ? '<div class="note">' + mdInline(a.archNote) + '</div>' : '')
+            + gdListRows(a, aeps)
+            + '</details>';
+        }).join('');
+    }
 
     // ---- 我的痕迹（2026-10-09 起不再单列）：痕迹就在每张集的卡片里「留一点痕迹」下方，
     //      留在页面最底部会离当天那集太远——五一要求去掉这块独立卡片。
-    return hero + mainHtml + sideHtml;
+    return hero + mainHtml + sideHtml + archHtml;
   }
 
   function renderGoals() {
@@ -4480,19 +4559,22 @@
       case 'save-growth-review': {
         // 2026-10-10：格局线「回顾日」写下的东西，存进随笔本。
         // 注意：不能复用 save-journal——那个按日期去重，会覆盖她当天的随笔。
+        // 2026-10-16：一条线可能有多次回顾（毛线按卷），用 data-rv 记住是第几次；
+        //             同一次再写 = 更新那一篇（按 tag + arc + rv 找）。
         const arcKey = el.dataset.arc || '';
+        const rvIdx = parseInt(el.dataset.rv || '0', 10) || 0;
         const content = get('out');
         if (!content) { toast('写点什么再保存吧'); break; }
         if (!s.journals) s.journals = { entries: [] };
         const g = G();
         const arc = g ? (g.arcs || []).filter(a => a.key === arcKey)[0] : null;
-        const ex = s.journals.entries.filter(j => j.tag === 'growth-review' && j.arc === arcKey)[0];
+        const ex = s.journals.entries.filter(j => j.tag === 'growth-review' && j.arc === arcKey && ((j.rv === undefined ? 0 : j.rv) === rvIdx))[0];
         const stamp = fmtStamp();
         if (ex) { ex.content = content; ex.updatedAt = stamp; toast('已更新这篇回顾 📜'); }
         else {
           s.journals.entries.unshift({
             id: Store.uid(), date: T(), content: content, mood: '',
-            tag: 'growth-review', arc: arcKey, arcName: arc ? arc.name : '',
+            tag: 'growth-review', arc: arcKey, rv: rvIdx, arcName: arc ? arc.name : '',
             createdAt: stamp, updatedAt: stamp
           });
           toast('已存进随笔本 📜');

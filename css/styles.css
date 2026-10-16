@@ -1186,6 +1186,25 @@ label { font-size: 13px; color: var(--muted); font-weight: 600; display: block; 
 .gd-done-card .row { flex-wrap: nowrap; align-items: center; }
 .gd-done-card .row > * { flex: 0 0 auto; min-width: 0; }
 
+/* ---- 2026-10-16：📦 存档（更早的线：读完的人物线 / 被换掉的老版本） ----
+   人物线是「苏轼 → 王阳明 → …」，毛线是「速览 → 细读 → …」。
+   只有最新那条在走，更早的自己折进这里，不占今天的版面，但随时能展开重读。 */
+.card.gd-arch { padding: 0; overflow: hidden; }
+.card.gd-arch > summary {
+  display: flex; align-items: center; gap: 8px;
+  padding: 12px 14px; cursor: pointer; list-style: none;
+}
+.card.gd-arch > summary::-webkit-details-marker { display: none; }
+.card.gd-arch > summary::before { content: '▸'; color: var(--muted); font-size: 11px; }
+.card.gd-arch[open] > summary::before { content: '▾'; }
+.gd-arch-ico { font-size: 15px; }
+.gd-arch-name { font-weight: 700; font-size: 14px; }
+.gd-arch-more { margin-left: auto; font-size: 12px; color: var(--muted); }
+.card.gd-arch[open] > summary { border-bottom: 1px solid var(--border); }
+.card.gd-arch .note { padding: 10px 14px 0; }
+.card.gd-arch .gd-row { padding-left: 10px; padding-right: 10px; }
+.card.gd-arch .gd-row:last-child { margin-bottom: 10px; }
+
 /* ---- 2026-10-14：光洙呀 · 温暖记录 ---- */
 .lks-item {
   padding: 13px 15px;
