@@ -95,7 +95,6 @@
     { id: 'goals', label: '主题读书', ico: '📚' },
     { id: 'growth', label: '格局线', ico: '📜' },
     { id: 'curios', label: '好奇手账', ico: '🔍' },
-    { id: 'lks', label: '光洙呀', ico: '🫧' },
     { id: 'favorites', label: '收藏清理', ico: '🧹' },
     { id: 'quotes', label: '语录整理', ico: '💬' },
     { id: 'gratitude', label: '感恩日记', ico: '🌿' },
@@ -107,7 +106,7 @@
     { id: 'todos', label: '待办清单', ico: '📝' },
     { id: 'settings', label: '设置', ico: '⚙️' }
   ];
-  const TITLES = { overview: '今日 · 寄语', goals: '主题阅读营', growth: '格局线 · 每日一集', curios: '好奇手账 · 攒好奇', lks: '光洙呀 · 温暖记录', favorites: '收藏夹清理', quotes: '语录整理', gratitude: '感恩日记', wishlist: '愿望清单', review: '复盘 · 随笔 · 体检', insight: '洞察 · 周报/月报', habits: '生活打卡 · 秩序', media: '自媒体 · 内容', todos: '待办清单', settings: '设置 · 数据', more: '全部板块' };
+  const TITLES = { overview: '今日 · 寄语', goals: '主题阅读营', growth: '格局线 · 每日一集', curios: '好奇手账 · 攒好奇', favorites: '收藏夹清理', quotes: '语录整理', gratitude: '感恩日记', wishlist: '愿望清单', review: '复盘 · 随笔 · 体检', insight: '洞察 · 周报/月报', habits: '生活打卡 · 秩序', media: '自媒体 · 内容', todos: '待办清单', settings: '设置 · 数据', more: '全部板块' };
 
   let current = 'overview';
   const ui = { week: Store.isoWeek(), favFilter: 'pending', reviewTab: 'list', quoteFilter: 'all', quoteExpanded: null, quoteEditing: null, shelfView: 'covers', shelfExpanded: null, insightType: 'week', insightExpanded: null, mediaTab: 'idea', posOpen: false, onlineQuote: null, catOpen: {}, quoteLoading: false, quoteFailed: false, apiConfigOpen: false, coachSessions: {}, syncStatusText: '同步未开始', todoFilter: 'all', campBookOpen: null, campHistoryOpen: false, journalEdit: null, curioEdit: null, gdOpen: {}, gdRedo: {}, gdArc: '' };
@@ -144,7 +143,7 @@
   }
 
   const RENDERERS = {
-    overview: renderOverview, goals: renderGoals, growth: renderGrowth, curios: renderCurios, lks: renderLks, favorites: renderFavorites, quotes: renderQuotes,
+    overview: renderOverview, goals: renderGoals, growth: renderGrowth, curios: renderCurios, favorites: renderFavorites, quotes: renderQuotes,
     gratitude: renderGratitude, review: renderReview, insight: renderInsight,
     habits: renderHabits, media: renderMedia, todos: renderTodos, wishlist: renderWishlist, settings: renderSettings,
     more: renderMoreGrid
@@ -188,7 +187,7 @@
   // 手机「更多」宫格：收纳低频板块（桌面侧栏仍全量直达）
   function renderMoreGrid() {
     const kept = MOBILE_BOTTOM.slice(0, 5);
-    const brief = { goals: '目标追踪 · 周计划 · 书架笔记', growth: '每日一集 · 历史人物 · 毛选', curios: '随手记好奇 · 攒着连点成线', lks: '光洙的暖心回复 · 攒一点共情', media: '选题 · 文案 · 内容记录', favorites: '收藏清理 · 转素材 · AI 清理', quotes: '金句收藏 · 置顶 · 配图', gratitude: '每日感恩 1–3 件小事', insight: '周报/月报 · 问答洞察', settings: '云端同步 · AI · 导入 · 备份' };
+    const brief = { goals: '目标追踪 · 周计划 · 书架笔记', growth: '每日一集 · 历史人物 · 毛选', curios: '随手记好奇 · 攒着连点成线', media: '选题 · 文案 · 内容记录', favorites: '收藏清理 · 转素材 · AI 清理', quotes: '金句收藏 · 置顶 · 配图', gratitude: '每日感恩 1–3 件小事', insight: '周报/月报 · 问答洞察', settings: '云端同步 · AI · 导入 · 备份' };
     const more = SECTIONS.filter(x => !kept.includes(x.id)).map(x => `
       <div class="more-card" data-action="nav" data-sec="${x.id}">
         <div class="more-ico">${x.ico}</div>
@@ -2037,6 +2036,13 @@
         </div>
       </form>
     </div>
+    <details class="card jn-tips">
+      <summary>💡 从光洙那儿学到的几点（${LKS_TIPS.length}）</summary>
+      <div class="jn-tips-body">
+        <div class="note" style="margin:0 0 10px">${esc(LKS_TIPS_INTRO)}</div>
+        <div class="lks-tips">${LKS_TIPS.map(t => `<div class="lks-tip"><div class="lks-tip-t">${esc(t.t)}</div><div class="lks-tip-d">${esc(t.d)}</div></div>`).join('')}</div>
+      </div>
+    </details>
     <div class="card">
       <h2>📜 随笔本（${jl.length}）</h2>
       ${items}
@@ -2085,31 +2091,15 @@
     </div>`;
   }
 
-  /* ---------- 光洙呀：温暖记录，不拆解、不考试 ---------- */
-  function renderLks() {
-    const L = (typeof window !== 'undefined' && window.LKS) ? window.LKS : null;
-    if (!L) {
-      return '<div class="card"><h2>🫧 光洙呀</h2><div class="note">内容文件 <b>js/lks.js</b> 没加载进来。先刷新一下；还不行就是站点包里漏了这个文件。</div></div>';
-    }
-    const items = (L.items || []).slice().sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
-    const list = items.length ? items.map(it => `
-      <div class="lks-item">
-        <div class="lks-q">${esc(it.q || '')}</div>
-        <div class="lks-a">${esc(it.a || '')}</div>
-      </div>`).join('') : '<div class="empty"><div class="big">🫧</div>还没有内容，等晚上自动补料来</div>';
-    const tips = (L.tips && L.tips.length) ? (L.tips || []).map(t => `
-      <div class="lks-tip"><div class="lks-tip-t">💡 ${esc(t.t || '')}</div><div class="lks-tip-d">${esc(t.d || '')}</div></div>`).join('') : '';
-    return `
-    <div class="card">
-      <h2>🫧 光洙呀</h2>
-      <div class="note">${esc(L.intro || '')}</div>
-    </div>
-    <div class="card">
-      <h2>💬 那些暖到人的回复（${items.length}）</h2>
-      ${list}
-    </div>
-    ${tips ? `<div class="card"><h2>💡 能学到的一点点</h2><div class="note" style="margin-bottom:8px">从这些回复里偶尔咂摸出来的方法，能提炼就提炼，没有就算了。</div>${tips}</div>` : ''}`;
-  }
+  /* ---------- 从光洙那儿学到的几点（原「光洙呀」板块 2026-10-19 已删，只留这一小块，挂在随笔页） ---------- */
+  const LKS_TIPS_INTRO = '这几条是从他那些回复里咂摸出来的——看的时候不必拆解，用得上就用。';
+  const LKS_TIPS = [
+    { t: '先接住情绪，不否定', d: '「我也曾那样过」——用亲身经历把距离拉平，先承认这份不安是正常的，而不是劝人「别想太多」。' },
+    { t: '换一个视角', d: '「你现在是大学生们的梦想」——把对方从「我很难」的当下，拉到「在别人眼里其实很棒」的位置。' },
+    { t: '给「没有」松绑', d: '「可以做任何梦的、可以成为任何样子的人」——把「没有梦想」从一种缺失，翻成一种可能。' },
+    { t: '落到当下能迈的一小步', d: '「先努力充实地过好今天」——不给大道理，只给此刻就能做的一件事。' },
+    { t: '直接否定自我贬低', d: '「少我一个也没关系」是最糟糕的想法——不绕弯子，先把那层自我否定拆掉。' }
+  ];
 
   /* ---------- 复盘闭环：卡点复发合并 + 昨日卡点跟进 + 周度体检 ---------- */
   function _norm(s) {
