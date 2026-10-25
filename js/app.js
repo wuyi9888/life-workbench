@@ -123,7 +123,8 @@
 
   // 手机（≤820px）底部导航只保留 6 个高频入口，其余收进「更多」宫格；桌面侧栏保持全量
   // 2026-10-09：底部导航第 4 格由「自媒体」换为「格局线」（每日必做的高频入口），自媒体降为低频进「更多」
-  const MOBILE_BOTTOM = ['overview', 'habits', 'review', 'growth', 'todos', 'more'];
+  // 2026-10-25：手机底部把「待办清单」换成「愿望清单」（待办收进「更多」）
+  const MOBILE_BOTTOM = ['overview', 'habits', 'review', 'growth', 'wishlist', 'more'];
   function isMobileNav() { try { return window.matchMedia && window.matchMedia('(max-width: 820px)').matches; } catch (e) { return false; } }
   function navSections() {
     if (!isMobileNav()) return SECTIONS;
@@ -187,7 +188,7 @@
   // 手机「更多」宫格：收纳低频板块（桌面侧栏仍全量直达）
   function renderMoreGrid() {
     const kept = MOBILE_BOTTOM.slice(0, 5);
-    const brief = { goals: '目标追踪 · 周计划 · 书架笔记', growth: '每日一集 · 历史人物 · 毛选', curios: '随手记好奇 · 攒着连点成线', media: '选题 · 文案 · 内容记录', favorites: '收藏清理 · 转素材 · AI 清理', quotes: '金句收藏 · 置顶 · 配图', gratitude: '每日感恩 1–3 件小事', insight: '周报/月报 · 问答洞察', settings: '云端同步 · AI · 导入 · 备份' };
+    const brief = { goals: '目标追踪 · 周计划 · 书架笔记', growth: '每日一集 · 历史人物 · 毛选', curios: '随手记好奇 · 攒着连点成线', media: '选题 · 文案 · 内容记录', favorites: '收藏清理 · 转素材 · AI 清理', quotes: '金句收藏 · 置顶 · 配图', gratitude: '每日感恩 1–3 件小事', insight: '周报/月报 · 问答洞察', todos: '待办 · 勾掉一件是一件', settings: '云端同步 · AI · 导入 · 备份' };
     const more = SECTIONS.filter(x => !kept.includes(x.id)).map(x => `
       <div class="more-card" data-action="nav" data-sec="${x.id}">
         <div class="more-ico">${x.ico}</div>
@@ -3130,15 +3131,43 @@
    * 愿望清单：许愿池 → 已实现 / 已放下（长期项目池，不设期限）
    * ============================================================ */
   const WISH_CATS = ['想要的东西', '想去的地方', '想做的事', '想成为的样子'];
+  // 2026-10-25：金额显示（整数不带小数，有角分才补两位）
+  function money(n) {
+    const v = Math.round((Number(n) || 0) * 100) / 100;
+    const s = Number.isInteger(v)
+      ? v.toLocaleString('zh-CN')
+      : v.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    return '¥' + s;
+  }
+  // 2026-10-25：愿望的记录时刻——优先带时分的 createdAt，老数据只有日期就显示日期
+  function wishWhen(w) {
+    const c = (w && w.createdAt) || '';
+    if (/\d{1,2}:\d{2}/.test(c)) return c;
+    return (w && w.date) || '';
+  }
+  function wishSum(list) { return (list || []).reduce((a, w) => a + (Number(w.amount) || 0), 0); }
   function wishRows(list, actBtns) {
     if (!list.length) return '<div class="empty">（还没有）</div>';
     return list.map(w => {
       const mark = w.status === '已实现' ? '✅' : (w.status === '已放下' ? '🍃' : '⭐');
-      const dateTxt = w.status === '许愿中' ? (w.date || '') + ' 许愿' : ((w.statusDate || w.date || '') + (w.status === '已实现' ? ' 实现' : ' 放下'));
+      let when = '';
+      if (w.status === '许愿中') { const t = wishWhen(w); when = t ? t + ' 许愿' : ''; }
+      else {
+        const st = w.statusDate || '';
+        when = st ? st + (w.status === '已实现' ? ' 实现' : ' 放下')
+                  : (wishWhen(w) ? wishWhen(w) + ' 许愿' : '');
+      }
+      const amt = Number(w.amount) || 0;
+      const amtBtn = amt > 0
+        ? `<button class="wish-amt has" data-action="wish-amount" data-id="${w.id}" title="点一下改金额">${money(amt)} <span class="pen">✎</span></button>`
+        : `<button class="wish-amt" data-action="wish-amount" data-id="${w.id}" title="点一下填金额">＋ 填金额</button>`;
       return `<div class="item">
         <div class="grow">
-          <div class="title">${mark} ${esc(w.text)}</div>
-          <div class="sub">${esc(w.category || '')}${w.category ? ' · ' : ''}${esc(dateTxt)}</div>
+          <div class="wish-head">
+            <span class="title">${mark} ${esc(w.text)}</span>
+            ${amtBtn}
+          </div>
+          <div class="sub">${esc(w.category || '')}${w.category ? ' · ' : ''}${esc(when)}</div>
         </div>
         <div class="tools">${actBtns(w)}</div>
       </div>`;
@@ -3161,13 +3190,25 @@
       <button class="btn sm" data-action="wish-reopen" data-id="${w.id}" title="其实还是想要">↩ 重新许愿</button>
       <button class="icon-btn" data-action="del-wish" data-id="${w.id}" title="删除">🗑</button>`);
     const noneAll = !act.length && !done.length && !drop.length;
+    const sumAct = wishSum(act), sumDone = wishSum(done);
+    const noAmt = act.filter(w => !(Number(w.amount) > 0)).length;
     return `
     <div class="card">
       <h2>✨ 愿望清单 <span class="sub">${act.length} 个在路上 · 已实现 ${done.length} 个</span></h2>
-      <div class="note">愿望不是任务，不设期限：许下了，慢慢靠近它；实现了，去感恩日记记一笔；放下了，也不丢人。</div>
-      <form data-form="add-wish" class="row" style="align-items:flex-end;flex-wrap:wrap">
-        <div style="flex:3;min-width:160px"><label>许个愿</label><input name="text" placeholder="想要的东西 / 想去的地方 / 想做成的事…" required></div>
-        <div style="flex:1;min-width:120px"><label>分类</label><select name="category">${cats}</select></div>
+      <div class="wish-sum">
+        <div class="wish-sum-k">如果这些愿望都实现，大约要</div>
+        <div class="wish-sum-v">${money(sumAct)}</div>
+        <div class="wish-sum-meta">
+          <span>${act.length} 个在路上</span>
+          ${done.length ? `<span>·</span><span>已实现 ${money(sumDone)}</span>` : ''}
+          ${noAmt ? `<span>·</span><span class="dim">${noAmt} 个还没填金额</span>` : ''}
+        </div>
+      </div>
+      <div class="note">愿望不是任务，不设期限：许下了，慢慢靠近它；实现了，去感恩日记记一笔；放下了，也不丢人。金额是自己估的，随时点一下就能改。</div>
+      <form data-form="add-wish" class="row wish-form" style="align-items:flex-end;flex-wrap:wrap">
+        <div class="wf-text" style="flex:3;min-width:160px"><label>许个愿</label><input name="text" placeholder="想要的东西 / 想去的地方 / 想做成的事…" required></div>
+        <div style="flex:0 0 118px"><label>分类</label><select name="category">${cats}</select></div>
+        <div style="flex:0 0 96px"><label>金额（元）</label><input name="amount" type="number" min="0" step="1" inputmode="decimal" placeholder="可留空"></div>
         <div style="flex:0 0 auto"><button class="btn primary sm">⭐ 许愿</button></div>
       </form>
       ${noneAll ? '<div class="empty" style="padding:8px 0 0">还没有愿望。闭上眼睛想一想：最近心里痒痒、想要靠近的是什么？</div>' : ''}
@@ -3191,10 +3232,11 @@
       </div>`;
     }
     const w = act[0];
+    const sumCard = wishSum(act);
     return `<div class="card">
-      <h2>✨ 心愿清单 <span class="sub">${doneN ? '已实现 ' + doneN + ' 个 · ' : ''}${act.length} 个在路上</span></h2>
+      <h2>✨ 心愿清单 <span class="sub">${doneN ? '已实现 ' + doneN + ' 个 · ' : ''}${act.length} 个在路上${sumCard > 0 ? ' · ' + money(sumCard) : ''}</span></h2>
       <div class="item">
-        <div class="grow"><div class="title">${esc(w.text)}</div><div class="sub">${esc(w.category || '心愿')} · ${esc(w.date || '')} 许下</div></div>
+        <div class="grow"><div class="title">${esc(w.text)}</div><div class="sub">${esc(w.category || '心愿')} · ${esc(wishWhen(w))} 许下${Number(w.amount) > 0 ? ' · ' + money(w.amount) : ''}</div></div>
         <button class="btn sm" data-action="nav" data-sec="wishlist">查看</button>
       </div>
     </div>`;
@@ -3725,13 +3767,26 @@
       case 'del-todo': { const arrT = (s.todos || []); const iT = arrT.findIndex(x => x.id === id); if (iT >= 0) undoDelete(arrT, iT, arrT.splice(iT, 1)[0], '待办'); Store.save(); render(); break; }
       case 'wish-done': {
         const w = s.wishlist && s.wishlist.items && s.wishlist.items.find(x => x.id === id);
-        if (w && w.status === '许愿中') { w.status = '已实现'; w.statusDate = T(); Store.save(); render(); toast('🎉 愿望实现！去「感恩日记」记一笔，把美好留住 🌿'); }
+        if (w && w.status === '许愿中') { w.status = '已实现'; w.statusDate = fmtStamp(); Store.save(); render(); toast('🎉 愿望实现！去「感恩日记」记一笔，把美好留住 🌿'); }
         break;
       }
       case 'wish-thanks': { go('gratitude'); toast('在感恩日记里记下这一刻吧 🌿'); break; }
       case 'wish-drop': {
         const w2 = s.wishlist && s.wishlist.items && s.wishlist.items.find(x => x.id === id);
-        if (w2 && w2.status === '许愿中') { w2.status = '已放下'; w2.statusDate = T(); Store.save(); render(); toast('已放下这个愿望 🍃'); }
+        if (w2 && w2.status === '许愿中') { w2.status = '已放下'; w2.statusDate = fmtStamp(); Store.save(); render(); toast('已放下这个愿望 🍃'); }
+        break;
+      }
+      case 'wish-amount': {
+        // 2026-10-25：点金额就地改（老愿望也能补填）
+        const wA = s.wishlist && s.wishlist.items && s.wishlist.items.find(x => x.id === id);
+        if (!wA) break;
+        const curA = Number(wA.amount) || 0;
+        const rawA = prompt('这个愿望大概要花多少钱？（元，留空表示没数）', curA > 0 ? String(curA) : '');
+        if (rawA === null) break;
+        const cleanA = String(rawA).replace(/[^\d.]/g, '');
+        wA.amount = Math.max(0, Number(cleanA) || 0);
+        Store.save(); render();
+        toast(wA.amount > 0 ? '金额已记下 💰' : '金额已清空');
         break;
       }
       case 'wish-reopen': {
@@ -4551,7 +4606,9 @@
         if (!s.wishlist) s.wishlist = { items: [] };
         const dup = s.wishlist.items.find(x => x.status === '许愿中' && x.text === txt);
         if (dup) { toast('这个愿望已经在路上了 ⭐'); break; }
-        s.wishlist.items.unshift({ id: Store.uid(), text: txt, category: get('category'), status: '许愿中', date: T(), createdAt: fmtStamp(), statusDate: '' });
+        const amtRaw = String(get('amount') || '').replace(/[^\d.]/g, '');
+        const amtNew = Math.max(0, Number(amtRaw) || 0);
+        s.wishlist.items.unshift({ id: Store.uid(), text: txt, category: get('category'), amount: amtNew, status: '许愿中', date: T(), createdAt: fmtStamp(), statusDate: '' });
         Store.save(); render(); toast('已许愿，慢慢靠近它 ✨'); break;
       }
       case 'save-growth-review': {

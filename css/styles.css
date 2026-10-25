@@ -1220,3 +1220,38 @@ label { font-size: 13px; color: var(--muted); font-weight: 600; display: block; 
 .lks-tip { padding: 11px 13px; background: var(--bg); border-radius: 9px; }
 .lks-tip-t { font-weight: 700; font-size: 14px; color: var(--text); margin-bottom: 3px; }
 .lks-tip-d { font-size: 13px; color: var(--muted); line-height: 1.7; }
+
+/* ---- 2026-10-25：愿望清单 · 金额与合计 ---- */
+.wish-sum {
+  margin: 2px 0 12px; padding: 13px 16px 12px;
+  border-radius: 14px; border: 1px solid rgba(240,170,40,.32);
+  background: linear-gradient(135deg, rgba(255,196,84,.18), rgba(255,255,255,.32));
+}
+[data-theme="dark"] .wish-sum {
+  border-color: rgba(240,170,40,.28);
+  background: linear-gradient(135deg, rgba(255,196,84,.13), rgba(23,29,46,.45));
+}
+.wish-sum-k { font-size: 12.5px; color: var(--muted); letter-spacing: .3px; }
+.wish-sum-v { font-size: 30px; font-weight: 800; line-height: 1.22; margin: 1px 0 4px; letter-spacing: -.5px; }
+.wish-sum-meta { display: flex; flex-wrap: wrap; gap: 5px; font-size: 12.5px; color: var(--muted); }
+.wish-sum-meta .dim { opacity: .8; }
+.wish-head { display: flex; align-items: baseline; gap: 10px; }
+.wish-head .title { flex: 1; min-width: 0; }
+.wish-amt {
+  flex: 0 0 auto; border: 1px dashed var(--border); background: transparent;
+  color: var(--muted); font-size: 12.5px; font-weight: 600; padding: 2px 9px;
+  border-radius: 999px; cursor: pointer; font-family: inherit; white-space: nowrap;
+  transition: border-color .15s, color .15s;
+}
+.wish-amt:hover { border-color: var(--primary); color: var(--primary); }
+.wish-amt.has {
+  border-style: solid; border-color: rgba(240,170,40,.55);
+  background: rgba(255,196,84,.18); color: #a9670a;
+}
+[data-theme="dark"] .wish-amt.has { color: #f0c86a; background: rgba(255,196,84,.14); }
+.wish-amt .pen { font-size: 11px; opacity: .55; margin-left: 1px; }
+/* 愿望表单：手机上「许个愿」独占一行，分类/金额/按钮并排一行（覆盖 .row>* 的 min-width:140px） */
+.wish-form > * { min-width: 0; }
+@media (max-width: 820px) {
+  .wish-form .wf-text { flex: 1 1 100% !important; }
+}

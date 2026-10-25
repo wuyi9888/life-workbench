@@ -63,7 +63,7 @@
       gratitude: { entries: [] },
       quotes: [],
       reviews: { entries: [], weeklyReports: [] }, // weeklyReports: [{ id,date,rangeStart,rangeEnd,createdAt,findings:[{kind,title,evidence,fix,habitPlan}],problems:[] }]
-      wishlist: { items: [] }, // 愿望清单：{ id, text, category, status:'许愿中'|'已实现'|'已放下', date, createdAt, statusDate }
+      wishlist: { items: [] }, // 愿望清单：{ id, text, category, status:'许愿中'|'已实现'|'已放下', date, createdAt, statusDate, amount }
       journals: { entries: [] }, // 每日随笔：{ id, date, createdAt, updatedAt, content, mood }
       curios: { entries: [] }, // 好奇手账：{ id, date, createdAt, text }（一句话记下一个好奇点，攒着到节点连点成线）
       habits: {
