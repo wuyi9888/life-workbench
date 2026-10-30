@@ -923,6 +923,9 @@ label { font-size: 13px; color: var(--muted); font-weight: 600; display: block; 
 }
 .gd-stat b { display: block; font-size: 22px; line-height: 1.2; color: var(--primary); }
 .gd-stat span { font-size: 12px; color: var(--muted); }
+/* 2026-10-30：累计天数说明行（连续天数降级到这里，断一天不清零） */
+.gd-days-note { margin-top: 9px; font-size: 12.5px; color: var(--muted); line-height: 1.65; }
+.gd-days-note b { color: var(--text); font-weight: 700; }
 
 /* ---- 人物线头 ---- */
 .gd-arc-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }

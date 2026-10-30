@@ -981,12 +981,33 @@
   // 连续打卡天数（只数「格局线」自身的打卡日）
   function gdStreak() {
     const s = S(); const rec = (s.growth && s.growth.records) || {};
-    const days = {};
-    Object.keys(rec).forEach(k => { if (rec[k] && rec[k].done && rec[k].at) days[String(rec[k].at).slice(0, 10)] = 1; });
+    const days = gdDoneDays(rec);
     let d = T(), n = 0;
     if (!days[d]) d = Store.addDays(d, -1);
     while (days[d]) { n++; d = Store.addDays(d, -1); }
     return n;
+  }
+  // 有打卡的那些日子（按 at 的日期去重）
+  function gdDoneDays(rec) {
+    const days = {};
+    Object.keys(rec || {}).forEach(k => {
+      const r = rec[k];
+      if (r && r.done && r.at) days[String(r.at).slice(0, 10)] = 1;
+    });
+    return days;
+  }
+  /* 累计打卡天数（2026-10-30 五一提：连续天数会归零，她昨天打过卡却显示 0，像白读了）。
+   * 现在主数字用「累计」——只往上加，断一天不清零；
+   * 连续天数仍算，但只在 >0 时以小字提示，不再占领主数字。 */
+  function gdDaysTotal() {
+    const s = S(); const rec = (s.growth && s.growth.records) || {};
+    return Object.keys(gdDoneDays(rec)).length;
+  }
+  // 这个月打过几天卡
+  function gdDaysThisMonth() {
+    const s = S(); const rec = (s.growth && s.growth.records) || {};
+    const pre = T().slice(0, 7);
+    return Object.keys(gdDoneDays(rec)).filter(d => d.slice(0, 7) === pre).length;
   }
   function gdArcEps(arc) { return (arc.episodes || []).slice().sort(function (a, b) { return a.seq - b.seq; }); }
   // 阅读分钟数：按 300 字/分钟 估（2026-10-10 加，原来写死"5 分钟"，毛线的短段和长集都显示 5 分钟不准）
@@ -1421,6 +1442,13 @@
     const readN = allEps.filter(function (x) { return rec[x.key] && rec[x.key].done; }).length;
     const totalN = allEps.length;
     const streak = gdStreak();
+    const daysN = gdDaysTotal();
+    const daysMon = gdDaysThisMonth();
+    // 2026-10-30：主数字改成「累计天数」（断一天不再归零），连续天数退成一行小字
+    const daysNote = !daysN
+      ? '还没开始也没关系：读完第一集，这一天就算上了。'
+      : '本月 <b>' + daysMon + '</b> 天' + (streak > 0 ? ' · 最近连续 <b>' + streak + '</b> 天' : '')
+        + ' —— 天数<b>只往上加</b>，中间断一天也不会清零。';
 
     const hero = '<div class="card gd-hero">'
       + '<div class="gd-hero-head"><h2>📜 格局线 · 每日一集</h2><span class="gd-hero-tag">读到就赢</span></div>'
@@ -1428,8 +1456,9 @@
       + '<div class="gd-stats">'
       + '<div class="gd-stat"><b>' + readN + '</b><span>已读</span></div>'
       + '<div class="gd-stat"><b>' + totalN + '</b><span>已更新</span></div>'
-      + '<div class="gd-stat"><b>' + streak + '</b><span>连续天数</span></div>'
-      + '</div></div>';
+      + '<div class="gd-stat"><b>' + daysN + '</b><span>累计天数</span></div>'
+      + '</div>'
+      + '<div class="gd-days-note">' + daysNote + '</div></div>';
 
     // ---- 人物线 ----
     let mainHtml = '';
@@ -4589,9 +4618,15 @@
       case 'growth-output': {
         const gk = el.dataset.id;
         const txt = get('out');
-        gdSave(gk, { out: txt, outAt: txt ? fmtStamp() : '' });
+        const before = gdRec(gk);
+        const patch = { out: txt, outAt: txt ? fmtStamp() : '' };
+        // 2026-10-30：她习惯「写完痕迹 = 今天读过了」。写了字但还没打卡的，顺手补上，
+        // 免得累计/连续天数漏掉这一天（她昨天就因为这个以为白打了）。
+        const autoChk = !!(txt && !before.done);
+        if (autoChk) { patch.done = true; patch.at = fmtStamp(); }
+        gdSave(gk, patch);
         render();
-        toast(txt ? '✍️ 痕迹已保存' : '已清空');
+        toast(txt ? (autoChk ? '✍️ 痕迹已保存 · 顺手打了今天的卡 ✓' : '✍️ 痕迹已保存') : '已清空');
         break;
       }
       case 'add-todo': {

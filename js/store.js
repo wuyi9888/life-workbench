@@ -202,6 +202,17 @@
         // 升级：格局线（旧备份没有）
         state.growth = state.growth && typeof state.growth === 'object' ? state.growth : { records: {} };
         state.growth.records = state.growth.records || {};
+        /* 2026-10-30：把「写了痕迹、但没点『读完了打卡』」的补成已读。
+         * 五一的习惯是「读完留一句痕迹」就当打过卡了，可原来痕迹只写 out、不置 done，
+         * 结果那天的打卡统计漏掉、连续天数掉下来又不会归零——她说"明明打了卡却没显示"。
+         * 补上：有痕迹就算读过，at 见 outAt（没有就留空，只影响「已读」不影响天数）。 */
+        Object.keys(state.growth.records).forEach(k => {
+          const gr = state.growth.records[k];
+          if (gr && !gr.done && gr.out && String(gr.out).trim()) {
+            gr.done = true;
+            if (!gr.at) gr.at = gr.outAt || '';
+          }
+        });
         // 升级：洞察报告
         state.reports = state.reports || [];
         // 升级：专属寄语缓存
