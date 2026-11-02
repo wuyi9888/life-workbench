@@ -48,6 +48,7 @@ window.GROWTH = {
          y 年份 / age 周岁 / place 当时在哪 / t 发生了什么 / d 一句说明
          kind: start 起步 · turn 转折 · high 高光 · low 低谷 · end 终点 / lv 0-5 起伏高度 / ep 对应第几集 */
       journey: {
+        map: 'img/journey/sushi.svg',
         span: '1037 – 1101',
         shape: '二十岁名满京城，四十二岁下狱，之后一路往南，最后死在回家的路上。他的路是越走越远，人越写越开。',
         stops: [
@@ -1607,6 +1608,7 @@ window.GROWTH = {
          y 年份 / age 周岁 / place 当时在哪 / t 发生了什么 / d 一句说明
          kind: start 起步 · turn 转折 · high 高光 · low 低谷 · end 终点 / lv 0-5 起伏高度 / ep 对应第几集 */
       journey: {
+        map: 'img/journey/wangyangming.svg',
         span: '1472 – 1529',
         shape: '前半生一直在门外找路：格竹、落第、学兵法、学佛道。三十六岁被扔到最烂的地方，反而在石棺里想通了。',
         stops: [
@@ -3590,6 +3592,7 @@ window.GROWTH = {
          y 年份 / age 周岁 / place 当时在哪 / t 发生了什么 / d 一句说明
          kind: start 起步 · turn 转折 · high 高光 · low 低谷 · end 终点 / lv 0-5 起伏高度 / ep 对应第几集 */
       journey: {
+        map: 'img/journey/libai.svg',
         span: '701 – 762',
         shape: '二十四岁出蜀，四十一岁才进长安，四十三岁被放还，五十六岁下狱。他一辈子在求一个位置，始终没拿到。',
         stops: [
@@ -3790,6 +3793,7 @@ window.GROWTH = {
          y 年份 / age 周岁 / place 当时在哪 / t 发生了什么 / d 一句说明
          kind: start 起步 · turn 转折 · high 高光 · low 低谷 · end 终点 / lv 0-5 起伏高度 / ep 对应第几集 */
       journey: {
+        map: 'img/journey/dufu.svg',
         span: '712 – 770',
         shape: '三十四岁困在长安，四十三岁死了儿子，四十四岁被俘，四十七岁弃官。后半生几乎都在路上和船上。',
         stops: [
@@ -4606,6 +4610,7 @@ window.GROWTH = {
          y 年份 / age 周岁 / place 当时在哪 / t 发生了什么 / d 一句说明
          kind: start 起步 · turn 转折 · high 高光 · low 低谷 · end 终点 / lv 0-5 起伏高度 / ep 对应第几集 */
       journey: {
+        map: 'img/journey/maoxuan-deep.svg',
         span: '1893 – 1949',
         shape: '十六岁走出山冲，二十七岁参与建党，三十四岁上山，四十一岁在遵义拿到指挥权，五十五岁进城。这条线量的是「他管的事有多大」。',
         stops: [

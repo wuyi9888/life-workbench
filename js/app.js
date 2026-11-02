@@ -1048,12 +1048,6 @@
     const stops = j.stops;
     const readSeqs = gdReadSeqs(arc, rec);
     const maxRead = readSeqs.length ? Math.max.apply(null, readSeqs) : 0;
-    // 顶部起伏缩略条：柱子越高＝这一段越顺，越低＝这一段越难
-    const pulse = stops.map(function (s) {
-      const lv = Math.max(0, Math.min(5, (s.lv === undefined || s.lv === null) ? 2 : s.lv));
-      return '<span class="gd-pb k-' + (s.kind || 'plain') + '" title="' + esc(s.y + ' ' + (s.t || '') + ' · ' + (s.place || '')) + '">'
-        + '<i style="height:' + (14 + lv * 17) + '%"></i></span>';
-    }).join('');
     const rows = stops.map(function (s) {
       const read = !!(s.ep && maxRead && s.ep <= maxRead);
       const cur = !!(s.ep && s.ep === maxRead);
@@ -1074,15 +1068,18 @@
     return '<details class="gd-map"' + (closed ? '' : ' open') + '><summary>'
       + '<span class="gd-map-t">🗺 一生路径地图</span>'
       + '<span class="gd-map-span">' + esc(j.span || '') + ' · ' + stops.length + ' 站</span>'
-      + '<span class="gd-map-more">收起 ▴</span>'
+      + '<span class="gd-map-more"></span>'
       + '</summary>'
       + (j.shape ? '<div class="gd-map-shape">' + mdInline(j.shape) + '</div>' : '')
-      + '<div class="gd-map-pulse">' + pulse + '</div>'
+      + (j.map
+        ? '<div class="gd-jm"><img src="' + esc(j.map) + '" alt="' + esc((arc.name || '') + ' 一生路径地图') + '" loading="lazy" decoding="async"></div>'
+        : '')
       + '<div class="gd-map-legend">'
       + '<span class="k-start">起步</span><span class="k-turn">转折</span>'
       + '<span class="k-high">高光</span><span class="k-low">低谷</span><span class="k-end">终点</span>'
-      + '<span class="gd-map-lg-note">小柱＝这一段的高低 · 年龄按周岁算</span></div>'
-      + '<div class="gd-map-body">' + rows + '</div>'
+      + '<span class="gd-map-lg-note">图上的编号＝下面清单的序号</span></div>'
+      + '<details class="gd-map-list"><summary>逐站清单 · ' + stops.length + ' 站（点开看每一站做了什么）</summary>'
+      + '<div class="gd-map-body">' + rows + '</div></details>'
       + '</details>';
   }
   // 全部节点清单（点开看每个节点是什么事）
