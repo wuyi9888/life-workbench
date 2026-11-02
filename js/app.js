@@ -1037,6 +1037,54 @@
       + '<span class="gd-tl-prog" style="width:calc((100% - 100% / ' + n + ') * ' + (pct || 0) + ')"></span>'
       + nodes + '</div></div>';
   }
+  /* 2026-11-03：一生路径地图（五一说「想更直观看到他的经历路线」）
+   * 和上面的「时间链条」分工不同：
+   *   链条 = 一屏一根尺子，量进度；
+   *   地图 = 一站一站摊开，看「他当时在哪、遇上什么、这一下落多深」。
+   * 数据在 growth.js 的 arc.journey，这里只渲染、不写内容。 */
+  function gdJourneyHtml(arc, rec, closed) {
+    const j = arc && arc.journey;
+    if (!j || !j.stops || !j.stops.length) return '';
+    const stops = j.stops;
+    const readSeqs = gdReadSeqs(arc, rec);
+    const maxRead = readSeqs.length ? Math.max.apply(null, readSeqs) : 0;
+    // 顶部起伏缩略条：柱子越高＝这一段越顺，越低＝这一段越难
+    const pulse = stops.map(function (s) {
+      const lv = Math.max(0, Math.min(5, (s.lv === undefined || s.lv === null) ? 2 : s.lv));
+      return '<span class="gd-pb k-' + (s.kind || 'plain') + '" title="' + esc(s.y + ' ' + (s.t || '') + ' · ' + (s.place || '')) + '">'
+        + '<i style="height:' + (14 + lv * 17) + '%"></i></span>';
+    }).join('');
+    const rows = stops.map(function (s) {
+      const read = !!(s.ep && maxRead && s.ep <= maxRead);
+      const cur = !!(s.ep && s.ep === maxRead);
+      return '<div class="gd-ms k-' + (s.kind || 'plain') + (read ? ' read' : '') + (cur ? ' cur' : '') + '">'
+        + '<div class="gd-ms-axis"><span class="gd-ms-dot"></span></div>'
+        + '<div class="gd-ms-body">'
+        + '<div class="gd-ms-top">'
+        + '<b class="gd-ms-y">' + esc(s.y) + '</b>'
+        + (s.age === undefined || s.age === null ? '' : '<span class="gd-ms-age">' + s.age + ' 岁</span>')
+        + '<span class="gd-ms-place">📍 ' + esc(s.place || '') + '</span>'
+        + (cur ? '<span class="gd-ms-here">你读到这</span>'
+          : (s.ep ? '<span class="gd-ms-ep">第 ' + s.ep + ' 集</span>' : ''))
+        + '</div>'
+        + '<div class="gd-ms-t">' + esc(s.t || '') + '</div>'
+        + (s.d ? '<div class="gd-ms-d">' + mdInline(s.d) + '</div>' : '')
+        + '</div></div>';
+    }).join('');
+    return '<details class="gd-map"' + (closed ? '' : ' open') + '><summary>'
+      + '<span class="gd-map-t">🗺 一生路径地图</span>'
+      + '<span class="gd-map-span">' + esc(j.span || '') + ' · ' + stops.length + ' 站</span>'
+      + '<span class="gd-map-more">收起 ▴</span>'
+      + '</summary>'
+      + (j.shape ? '<div class="gd-map-shape">' + mdInline(j.shape) + '</div>' : '')
+      + '<div class="gd-map-pulse">' + pulse + '</div>'
+      + '<div class="gd-map-legend">'
+      + '<span class="k-start">起步</span><span class="k-turn">转折</span>'
+      + '<span class="k-high">高光</span><span class="k-low">低谷</span><span class="k-end">终点</span>'
+      + '<span class="gd-map-lg-note">小柱＝这一段的高低 · 年龄按周岁算</span></div>'
+      + '<div class="gd-map-body">' + rows + '</div>'
+      + '</details>';
+  }
   // 全部节点清单（点开看每个节点是什么事）
   function gdNodeListHtml(arc, rec) {
     const tl = arc.timeline || [];
@@ -1479,6 +1527,10 @@
         + gdNodeListHtml(mainArc, rec)
         + '</div>' : '';
 
+      // 2026-11-03：人物线单独给一张「一生路径地图」（从哪里走到哪里，一站一站摊开）
+      const mapCard = (mainArc.journey && mainArc.journey.stops && mainArc.journey.stops.length)
+        ? '<div class="card gd-map-card">' + gdJourneyHtml(mainArc, rec) + '</div>' : '';
+
       // 2026-10-09：今日槽位交给 gdTodaySlot —— 当天读完就显示完成面板，不顶下一集上来
       const todayCard = gdTodaySlot(mainArc, rec, '集', '今日一集');
 
@@ -1487,8 +1539,8 @@
         + '<div class="note">已更新 ' + eps.length + ' 集，计划共 ' + (mainArc.total || eps.length) + ' 集。读完的会变绿，可以随时点开重读——<b>没到日子的标「备着」，不算欠账</b>。</div>'
         + listRows + '</div>';
 
-      // 2026-10-09 调整顺序（五一要的）：一生链条 → 更新总表 → 今日一集
-      mainHtml = tlCard + listCard + todayCard;
+      // 2026-10-09 调整顺序（五一要的）：一生链条 → 路径地图 → 更新总表 → 今日一集
+      mainHtml = tlCard + mapCard + listCard + todayCard;
     }
 
     // ---- 并行线（毛线 / 思想线） ----
@@ -1514,6 +1566,10 @@
           + (sHere ? '<div class="gd-tl-hint">🔴 <b>你在这里</b>：' + esc(sHere) + '</div>'
             : '<div class="gd-tl-hint">尺子还是灰的——读完第 1 ' + unit + '，最左边两个节点就会亮起来 🌱</div>')
           + '</div>';
+      }
+      // 2026-11-03：毛线这条路也有人物路线（1893 → 1949），跟人物线同一套地图
+      if (arc.journey && arc.journey.stops && arc.journey.stops.length) {
+        sideHtml += '<div class="card gd-map-card">' + gdJourneyHtml(arc, rec) + '</div>';
       }
       // 2026-10-16：毛线不再只按人走，还按「卷」分——一段讲清楚一件事，别再用一段吞掉十几年
       sideHtml += '<div class="card gd-side-intro"><div class="note">这条线跟着一个人，一年一年往下走：'
@@ -1541,6 +1597,7 @@
             + '<span class="gd-arch-more">展开重读 ▾</span>'
             + '</summary>'
             + (a.archNote ? '<div class="note">' + mdInline(a.archNote) + '</div>' : '')
+            + gdJourneyHtml(a, rec, true)
             + gdListRows(a, aeps)
             + '</details>';
         }).join('');
