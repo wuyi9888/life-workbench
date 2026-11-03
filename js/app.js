@@ -1075,9 +1075,8 @@
         ? '<div class="gd-jm"><img src="' + esc(j.map) + '" alt="' + esc((arc.name || '') + ' 一生路径地图') + '" loading="lazy" decoding="async"></div>'
         : '')
       + '<div class="gd-map-legend">'
-      + '<span class="k-start">起步</span><span class="k-turn">转折</span>'
-      + '<span class="k-high">高光</span><span class="k-low">低谷</span><span class="k-end">终点</span>'
-      + '<span class="gd-map-lg-note">图上的编号＝下面清单的序号</span></div>'
+      + '<span class="k-high">实心＝顺的时候</span><span class="k-low">空心＝难的时候</span>'
+      + '<span class="gd-map-lg-note">编号＝下面清单的序号 · 大字是当时地名，小字是今天在哪</span></div>'
       + '<details class="gd-map-list"><summary>逐站清单 · ' + stops.length + ' 站（点开看每一站做了什么）</summary>'
       + '<div class="gd-map-body">' + rows + '</div></details>'
       + '</details>';

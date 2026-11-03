@@ -1001,11 +1001,15 @@ label { font-size: 13px; color: var(--muted); font-weight: 600; display: block; 
 }
 /* 2026-11-03：换成真地图（每人一张 SVG，编号＝清单序号） */
 .gd-jm {
-  margin: 4px 0 8px; border: 1px solid var(--border); border-radius: 12px;
-  background: #eef1f6; overflow-x: auto; overflow-y: hidden;
+  margin: 4px 0 8px; border: 1px solid #d7e3f2; border-radius: 12px;
+  background: #e9f1fa; overflow-x: auto; overflow-y: hidden;
   -webkit-overflow-scrolling: touch;
 }
-.gd-jm img { display: block; width: 100%; min-width: 520px; height: auto; }
+/* 2026-11-03 五一：图太大，缩到 600 宽居中；窄屏保留横向滑动，字不缩成蚂蚁 */
+.gd-jm img { display: block; width: 100%; max-width: 600px; margin: 0 auto; min-width: 0; height: auto; }
+@media (max-width: 700px) {
+  .gd-jm img { max-width: none; min-width: 520px; margin: 0; }
+}
 .gd-map-list { margin-top: 2px; }
 .gd-map-list > summary {
   list-style: none; cursor: pointer; font-size: 12px; font-weight: 700;
@@ -1024,8 +1028,9 @@ label { font-size: 13px; color: var(--muted); font-weight: 600; display: block; 
 }
 .gd-map-legend .k-start { --k: var(--accent); }
 .gd-map-legend .k-turn { --k: var(--primary); }
-.gd-map-legend .k-high { --k: var(--warn); }
-.gd-map-legend .k-low { --k: var(--danger); }
+.gd-map-legend .k-high { --k: #1d4ed8; }
+.gd-map-legend .k-low { --k: #ffffff; }
+.gd-map-legend .k-low::before { box-shadow: inset 0 0 0 1.8px #93b4e8; }
 .gd-map-legend .k-end { --k: var(--muted); }
 .gd-map-legend .gd-map-lg-note { flex: 1 0 100%; margin-left: 0; }
 .gd-map-legend .gd-map-lg-note::before { display: none; }
