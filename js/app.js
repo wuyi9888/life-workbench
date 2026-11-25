@@ -1066,13 +1066,13 @@
         + '</div></div>';
     }).join('');
     return '<details class="gd-map"' + (closed ? '' : ' open') + '><summary>'
-      + '<span class="gd-map-t">🗺 一生路径地图</span>'
+      + '<span class="gd-map-t">🗺 ' + esc(j.title || '一生路径地图') + '</span>'
       + '<span class="gd-map-span">' + esc(j.span || '') + ' · ' + stops.length + ' 站</span>'
       + '<span class="gd-map-more"></span>'
       + '</summary>'
       + (j.shape ? '<div class="gd-map-shape">' + mdInline(j.shape) + '</div>' : '')
       + (j.map
-        ? '<div class="gd-jm"><img src="' + esc(j.map) + '" alt="' + esc((arc.name || '') + ' 一生路径地图') + '" loading="lazy" decoding="async"></div>'
+        ? '<div class="gd-jm"><img src="' + esc(j.map) + '" alt="' + esc((arc.name || '') + ' ' + (j.title || '一生路径地图')) + '" loading="lazy" decoding="async"></div>'
         : '')
       + '<div class="gd-map-legend">'
       + '<span class="k-high">实心＝顺的时候</span><span class="k-low">空心＝难的时候</span>'
@@ -1512,10 +1512,10 @@
 
       const tlCard = (mainArc.timeline && mainArc.timeline.length) ? '<div class="card">'
         + '<div class="gd-arc-head"><span class="gd-arc-ico">' + mainArc.ico + '</span>'
-        + '<span class="gd-arc-name">' + esc(mainArc.name) + ' 的一生</span>'
-        + '<span class="gd-arc-theme">第一季 · ' + esc(mainArc.theme) + '</span>'
+        + '<span class="gd-arc-name">' + esc(mainArc.name) + (mainArc.noLife ? '' : ' 的一生') + '</span>'
+        + '<span class="gd-arc-theme">' + esc(mainArc.seasonLabel || '第一季') + ' · ' + esc(mainArc.theme) + '</span>'
         + '<span class="gd-arc-prog">已读 ' + readSeqs.length + ' / ' + eps.length + ' 集</span></div>'
-        + '<div class="note">这条链是<b>一条命</b>：' + esc(mainArc.timeline[0].y) + ' → ' + esc(mainArc.timeline[mainArc.timeline.length - 1].y) + '。'
+        + '<div class="note">' + (mainArc.noLife ? '这条链是<b>一条时间线</b>：' : '这条链是<b>一条命</b>：') + esc(mainArc.timeline[0].y) + ' → ' + esc(mainArc.timeline[mainArc.timeline.length - 1].y) + '。'
         + '每读完一集，对应的节点就会点亮。你随时能知道自己读到哪一步了。</div>'
         + gdTimelineHtml(mainArc, rec)
         + (readSeqs.length ? '<div class="gd-tl-hint">🔴 <b>你在这里</b>：' + esc((function () { const mx = Math.max.apply(null, readSeqs); const node = mainArc.timeline.filter(function (x) { return x.ep && x.ep <= mx; }).pop(); return node ? node.y + ' ' + node.t : ''; })()) + '</div>'
